@@ -364,7 +364,7 @@ struct drop_while_fn
         constexpr void operator()(State& state, Args&&... args) const
         {
             m_done |= !std::invoke(m_pred, args...);
-            if (!m_done)
+            if (m_done)
             {
                 m_next_reducer(state, std::forward<Args>(args)...);
             }
