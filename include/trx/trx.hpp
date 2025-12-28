@@ -82,7 +82,7 @@ struct reduce_fn
         const auto end_0 = std::end(range_0);
         for (; it_0 != end_0; ++it_0)
         {
-            if (!std::invoke(reducer.reducer, reducer.state, *it_0))
+            if (!reducer.reducer(reducer.state, *it_0))
             {
                 break;
             }
@@ -99,7 +99,7 @@ struct reduce_fn
         const auto end_1 = std::end(range_1);
         for (; it_0 != end_0 && it_1 != end_1; ++it_0, ++it_1)
         {
-            if (!std::invoke(reducer.reducer, reducer.state, *it_0, *it_1))
+            if (!reducer.reducer(reducer.state, *it_0, *it_1))
             {
                 break;
             }
@@ -119,7 +119,7 @@ struct reduce_fn
         const auto end_2 = std::end(range_2);
         for (; it_0 != end_0 && it_1 != end_1 && it_2 != end_2; ++it_0, ++it_1, ++it_2)
         {
-            if (!std::invoke(reducer.reducer, reducer.state, *it_0, *it_1, *it_2))
+            if (!reducer.reducer(reducer.state, *it_0, *it_1, *it_2))
             {
                 break;
             }

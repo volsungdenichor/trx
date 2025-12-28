@@ -197,3 +197,12 @@ TEST(transducers, intersperse)
     EXPECT_THAT(trx::from(std::string{ "hello" }, xform), testing::Eq("h,e,l,l,o"));
     EXPECT_THAT(trx::from(std::string{ "" }, xform), testing::Eq(""));
 }
+
+TEST(transducers, join_take_with_early_termination)
+{
+    EXPECT_THAT(
+        trx::from(
+            std::vector<std::string>{ "Alpha", "Beta", "Gamma", "Delta" },
+            trx::join |= trx::take(10) |= trx::into(std::string{})),
+        testing::Eq("AlphaBetaG"));
+}
