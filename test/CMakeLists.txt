@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-set(UNIT_TEST_BINARY flux_tests)
+set(UNIT_TEST_BINARY trx_tests)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -16,6 +16,7 @@ include(GoogleTest)
 
 set(UNIT_TEST_FILES
   transducers.test.cpp
+  reducers.test.cpp
 )
 
 add_executable(${UNIT_TEST_BINARY}

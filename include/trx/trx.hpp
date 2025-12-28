@@ -3,7 +3,7 @@
 #include <tuple>
 #include <type_traits>
 
-namespace flux
+namespace trx
 {
 
 template <class State, class Reducer>
@@ -701,4 +701,4 @@ static constexpr inline auto into = detail::into_fn{};
 static constexpr inline auto count
     = reducer_proxy_t{ std::ptrdiff_t{ 0 }, [](std::ptrdiff_t& state, auto&&...) { state += 1; } };
 
-}  // namespace flux
+}  // namespace trx
