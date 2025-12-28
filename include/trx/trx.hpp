@@ -4,6 +4,7 @@
 #define TRX_NAMESPACE trx
 #endif  // TRX_NAMESPACE
 
+#include <bitset>
 #include <tuple>
 #include <type_traits>
 
@@ -691,13 +692,12 @@ struct fork_fn
     struct reducer_t
     {
         std::tuple<Reducers...> m_reducers;
+        mutable std::bitset<sizeof...(Reducers)> m_done{};
 
         template <std::size_t N, class State, class... Args>
         void call(State& state, Args&&... args) const
         {
-            if (!std::get<N>(m_reducers)(std::get<N>(state), args...))
-            {
-            }
+            m_done[N] = !std::get<N>(m_reducers)(std::get<N>(state), args...);
             if constexpr (N + 1 < sizeof...(Reducers))
             {
                 call<N + 1>(state, args...);
@@ -708,7 +708,7 @@ struct fork_fn
         bool operator()(State& state, Args&&... args) const
         {
             call<0>(state, args...);
-            return true;
+            return !m_done.all();
         }
     };
 
@@ -757,8 +757,8 @@ static constexpr inline auto copy_to = detail::copy_to_fn{};
 static constexpr inline auto push_back = detail::push_back_fn{};
 static constexpr inline auto into = detail::into_fn{};
 
-static constexpr inline auto count = reducer_proxy_t{ std::ptrdiff_t{ 0 },
-                                                      [](std::ptrdiff_t& state, auto&&...) -> bool
+static constexpr inline auto count = reducer_proxy_t{ std::size_t{ 0 },
+                                                      [](std::size_t& state, auto&&...) -> bool
                                                       {
                                                           state += 1;
                                                           return true;
