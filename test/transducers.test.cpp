@@ -206,3 +206,25 @@ TEST(transducers, join_take_with_early_termination)
             trx::join |= trx::take(10) |= trx::into(std::string{})),
         testing::Eq("AlphaBetaG"));
 }
+
+template <class Reducer>
+Reducer sample(Reducer r)
+{
+    r(10);
+    r(12);
+    r(14);
+    return r;
+}
+
+TEST(transducers, working_with_visitor)
+{
+    EXPECT_THAT(sample(trx::into(std::vector<int>{})).state, testing::ElementsAre(10, 12, 14));
+    EXPECT_THAT(sample(trx::all_of([](int x) { return x % 2 == 0; })).state, true);
+    EXPECT_THAT(
+        sample(
+            trx::filter([](int x) { return x != 10; })      //
+            |= trx::transform([](int x) { return x * 2; })  //
+            |= trx::into(std::vector<int>{}))
+            .state,
+        testing::ElementsAre(24, 28));
+}
