@@ -25,9 +25,9 @@ struct reducer_proxy_t
     }
 
     template <class... Args>
-    void operator()(Args&&... args)
+    bool operator()(Args&&... args)
     {
-        std::invoke(reducer, state, std::forward<Args>(args)...);
+        return std::invoke(reducer, state, std::forward<Args>(args)...);
     }
 };
 
@@ -59,9 +59,10 @@ struct to_reducer_fn
         Reducer m_reducer;
 
         template <class State, class... Args>
-        constexpr void operator()(State& state, Args&&... args) const
+        constexpr bool operator()(State& state, Args&&... args) const
         {
             state = std::invoke(m_reducer, std::move(state), std::forward<Args>(args)...);
+            return true;
         }
     };
 
@@ -72,18 +73,6 @@ struct to_reducer_fn
     }
 };
 
-struct invoke_fn
-{
-    template <class State, class Reducer, class... Args>
-    constexpr auto operator()(reducer_proxy_t<State, Reducer> reducer, Args&&... args) const -> State
-    {
-        std::invoke(reducer.reducer, reducer.state, std::forward<Args>(args)...);
-        return reducer.state;
-    }
-};
-
-constexpr inline auto invoke = invoke_fn{};
-
 struct reduce_fn
 {
     template <class State, class Reducer, class Range_0>
@@ -93,7 +82,10 @@ struct reduce_fn
         const auto end_0 = std::end(range_0);
         for (; it_0 != end_0; ++it_0)
         {
-            std::invoke(reducer.reducer, reducer.state, *it_0);
+            if (!std::invoke(reducer.reducer, reducer.state, *it_0))
+            {
+                break;
+            }
         }
         return reducer.state;
     }
@@ -107,7 +99,10 @@ struct reduce_fn
         const auto end_1 = std::end(range_1);
         for (; it_0 != end_0 && it_1 != end_1; ++it_0, ++it_1)
         {
-            std::invoke(reducer.reducer, reducer.state, *it_0, *it_1);
+            if (!std::invoke(reducer.reducer, reducer.state, *it_0, *it_1))
+            {
+                break;
+            }
         }
         return reducer.state;
     }
@@ -124,7 +119,10 @@ struct reduce_fn
         const auto end_2 = std::end(range_2);
         for (; it_0 != end_0 && it_1 != end_1 && it_2 != end_2; ++it_0, ++it_1, ++it_2)
         {
-            std::invoke(reducer.reducer, reducer.state, *it_0, *it_1, *it_2);
+            if (!std::invoke(reducer.reducer, reducer.state, *it_0, *it_1, *it_2))
+            {
+                break;
+            }
         }
         return reducer.state;
     }
@@ -206,9 +204,10 @@ struct all_of_fn
         Pred m_pred;
 
         template <class... Args>
-        constexpr void operator()(bool& state, Args&&... args) const
+        constexpr bool operator()(bool& state, Args&&... args) const
         {
             state = state && std::invoke(m_pred, std::forward<Args>(args)...);
+            return state;
         }
     };
 
@@ -227,9 +226,10 @@ struct any_of_fn
         Pred m_pred;
 
         template <class... Args>
-        constexpr void operator()(bool& state, Args&&... args) const
+        constexpr bool operator()(bool& state, Args&&... args) const
         {
             state = state || std::invoke(m_pred, std::forward<Args>(args)...);
+            return !state;
         }
     };
 
@@ -248,9 +248,10 @@ struct none_of_fn
         Pred m_pred;
 
         template <class... Args>
-        constexpr void operator()(bool& state, Args&&... args) const
+        constexpr bool operator()(bool& state, Args&&... args) const
         {
             state = state && !std::invoke(m_pred, std::forward<Args>(args)...);
+            return state;
         }
     };
 
@@ -270,12 +271,13 @@ struct filter_fn
         Pred m_pred;
 
         template <class State, class... Args>
-        constexpr void operator()(State& state, Args&&... args) const
+        constexpr bool operator()(State& state, Args&&... args) const
         {
             if (std::invoke(m_pred, args...))
             {
-                m_next_reducer(state, std::forward<Args>(args)...);
+                return m_next_reducer(state, std::forward<Args>(args)...);
             }
+            return true;
         }
     };
 
@@ -295,7 +297,7 @@ struct transform_fn
         Func m_func;
 
         template <class State, class... Args>
-        constexpr void operator()(State& state, Args&&... args) const
+        constexpr bool operator()(State& state, Args&&... args) const
         {
             return m_next_reducer(state, std::invoke(m_func, std::forward<Args>(args)...));
         }
@@ -317,10 +319,10 @@ struct inspect_fn
         Func m_func;
 
         template <class State, class... Args>
-        constexpr void operator()(State& state, Args&&... args) const
+        constexpr bool operator()(State& state, Args&&... args) const
         {
             std::invoke(m_func, args...);
-            m_next_reducer(state, std::forward<Args>(args)...);
+            return m_next_reducer(state, std::forward<Args>(args)...);
         }
     };
 
@@ -340,12 +342,13 @@ struct transform_maybe_fn
         Func m_func;
 
         template <class State, class... Args>
-        constexpr void operator()(State& state, Args&&... args) const
+        constexpr bool operator()(State& state, Args&&... args) const
         {
             if (auto res = std::invoke(m_func, std::forward<Args>(args)...))
             {
-                m_next_reducer(state, *std::move(res));
+                return m_next_reducer(state, *std::move(res));
             }
+            return true;
         }
     };
 
@@ -367,13 +370,14 @@ struct take_while_fn
         mutable bool m_done = false;
 
         template <class State, class... Args>
-        constexpr void operator()(State& state, Args&&... args) const
+        constexpr bool operator()(State& state, Args&&... args) const
         {
             m_done |= !std::invoke(m_pred, args...);
             if (!m_done)
             {
-                m_next_reducer(state, std::forward<Args>(args)...);
+                return m_next_reducer(state, std::forward<Args>(args)...);
             }
+            return false;
         }
     };
 
@@ -395,13 +399,14 @@ struct drop_while_fn
         mutable bool m_done = false;
 
         template <class State, class... Args>
-        constexpr void operator()(State& state, Args&&... args) const
+        constexpr bool operator()(State& state, Args&&... args) const
         {
             m_done |= !std::invoke(m_pred, args...);
             if (m_done)
             {
-                m_next_reducer(state, std::forward<Args>(args)...);
+                return m_next_reducer(state, std::forward<Args>(args)...);
             }
+            return true;
         }
     };
 
@@ -421,12 +426,13 @@ struct take_fn
         mutable std::ptrdiff_t m_count;
 
         template <class State, class... Args>
-        constexpr void operator()(State& state, Args&&... args) const
+        constexpr bool operator()(State& state, Args&&... args) const
         {
             if (m_count-- > 0)
             {
-                m_next_reducer(state, std::forward<Args>(args)...);
+                return m_next_reducer(state, std::forward<Args>(args)...);
             }
+            return false;
         }
     };
 
@@ -445,12 +451,13 @@ struct drop_fn
         mutable std::ptrdiff_t m_count;
 
         template <class State, class... Args>
-        constexpr void operator()(State& state, Args&&... args) const
+        constexpr bool operator()(State& state, Args&&... args) const
         {
             if (m_count-- <= 0)
             {
-                m_next_reducer(state, std::forward<Args>(args)...);
+                return m_next_reducer(state, std::forward<Args>(args)...);
             }
+            return true;
         }
     };
 
@@ -470,12 +477,13 @@ struct stride_fn
         mutable std::ptrdiff_t m_index = 0;
 
         template <class State, class... Args>
-        constexpr void operator()(State& state, Args&&... args) const
+        constexpr bool operator()(State& state, Args&&... args) const
         {
             if (m_index++ % m_count == 0)
             {
-                m_next_reducer(state, std::forward<Args>(args)...);
+                return m_next_reducer(state, std::forward<Args>(args)...);
             }
+            return true;
         }
     };
 
@@ -495,15 +503,15 @@ struct partition_fn
         OnFalseReducer m_on_false_reducer;
 
         template <class State, class... Args>
-        constexpr void operator()(State& state, Args&&... args) const
+        constexpr bool operator()(State& state, Args&&... args) const
         {
             if (std::invoke(m_pred, args...))
             {
-                std::invoke(m_on_true_reducer, state.first, std::forward<Args>(args)...);
+                return m_on_true_reducer(state.first, std::forward<Args>(args)...);
             }
             else
             {
-                std::invoke(m_on_false_reducer, state.second, std::forward<Args>(args)...);
+                return m_on_false_reducer(state.second, std::forward<Args>(args)...);
             }
         }
     };
@@ -529,12 +537,16 @@ struct join_fn
         Reducer m_next_reducer;
 
         template <class State, class Arg>
-        constexpr void operator()(State& state, Arg&& arg) const
+        constexpr bool operator()(State& state, Arg&& arg) const
         {
             for (auto&& item : arg)
             {
-                m_next_reducer(state, std::forward<decltype(item)>(item));
+                if (!m_next_reducer(state, std::forward<decltype(item)>(item)))
+                {
+                    return false;
+                }
             }
+            return true;
         }
     };
 
@@ -554,14 +566,17 @@ struct intersperse_fn
         mutable bool m_first = true;
 
         template <class State, class Arg>
-        constexpr void operator()(State& state, Arg&& arg) const
+        constexpr bool operator()(State& state, Arg&& arg) const
         {
             if (!m_first)
             {
-                m_next_reducer(state, m_separator);
+                if (!m_next_reducer(state, m_separator))
+                {
+                    return false;
+                }
             }
             m_first = false;
-            m_next_reducer(state, std::forward<Arg>(arg));
+            return m_next_reducer(state, std::forward<Arg>(arg));
         }
     };
 
@@ -577,18 +592,20 @@ struct intersperse_fn
 struct ignore_reducer_t
 {
     template <class State, class... Args>
-    void operator()(State&, Args&&...) const
+    bool operator()(State&, Args&&...) const
     {
+        return true;
     }
 };
 
 struct copy_to_reducer_t
 {
     template <class State, class Arg>
-    void operator()(State& state, Arg&& arg) const
+    bool operator()(State& state, Arg&& arg) const
     {
         *state = std::forward<Arg>(arg);
         ++state;
+        return true;
     }
 };
 
@@ -618,9 +635,10 @@ static constexpr inline auto deref = deref_fn{};
 struct push_back_reducer_t
 {
     template <class State, class Arg>
-    void operator()(State& state, Arg&& arg) const
+    bool operator()(State& state, Arg&& arg) const
     {
         deref(state).push_back(std::forward<Arg>(arg));
+        return true;
     }
 };
 
@@ -630,10 +648,11 @@ struct copy_to_fn
     struct reducer_t
     {
         template <class State, class Arg>
-        void operator()(State& state, Arg&& arg) const
+        bool operator()(State& state, Arg&& arg) const
         {
             *state = std::forward<Arg>(arg);
             ++state;
+            return true;
         }
     };
 
@@ -671,19 +690,23 @@ struct fork_fn
         std::tuple<Reducers...> m_reducers;
 
         template <std::size_t N, class State, class... Args>
-        void call(State& state, Args&&... args) const
+        bool call(State& state, Args&&... args) const
         {
-            std::invoke(std::get<N>(m_reducers), std::get<N>(state), args...);
+            if (!std::get<N>(m_reducers)(std::get<N>(state), args...))
+            {
+                return false;
+            }
             if constexpr (N + 1 < sizeof...(Reducers))
             {
-                call<N + 1>(state, args...);
+                return call<N + 1>(state, args...);
             }
+            return true;
         }
 
         template <class State, class... Args>
-        void operator()(State& state, Args&&... args) const
+        bool operator()(State& state, Args&&... args) const
         {
-            call<0>(state, args...);
+            return call<0>(state, args...);
         }
     };
 
@@ -702,7 +725,6 @@ struct fork_fn
 
 constexpr inline auto reduce = detail::reduce_fn{};
 constexpr inline auto from = detail::from_fn{};
-constexpr inline auto invoke = detail::invoke_fn{};
 constexpr inline auto to_reducer = detail::to_reducer_fn{};
 
 static constexpr inline auto all_of = detail::all_of_fn{};
@@ -733,7 +755,11 @@ static constexpr inline auto copy_to = detail::copy_to_fn{};
 static constexpr inline auto push_back = detail::push_back_fn{};
 static constexpr inline auto into = detail::into_fn{};
 
-static constexpr inline auto count
-    = reducer_proxy_t{ std::ptrdiff_t{ 0 }, [](std::ptrdiff_t& state, auto&&...) { state += 1; } };
+static constexpr inline auto count = reducer_proxy_t{ std::ptrdiff_t{ 0 },
+                                                      [](std::ptrdiff_t& state, auto&&...) -> bool
+                                                      {
+                                                          state += 1;
+                                                          return true;
+                                                      } };
 
 }  // namespace TRX_NAMESPACE
