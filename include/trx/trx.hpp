@@ -493,42 +493,6 @@ struct stride_fn
     }
 };
 
-struct partition_fn
-{
-    template <class Pred, class OnTrueReducer, class OnFalseReducer>
-    struct reducer_t
-    {
-        Pred m_pred;
-        OnTrueReducer m_on_true_reducer;
-        OnFalseReducer m_on_false_reducer;
-
-        template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
-        {
-            if (std::invoke(m_pred, args...))
-            {
-                return m_on_true_reducer(state.first, std::forward<Args>(args)...);
-            }
-            else
-            {
-                return m_on_false_reducer(state.second, std::forward<Args>(args)...);
-            }
-        }
-    };
-
-    template <class Pred, class S0, class R0, class S1, class R1>
-    constexpr auto operator()(Pred&& pred, reducer_proxy_t<S0, R0> on_true_reducer, reducer_proxy_t<S1, R1> on_false_reducer)
-        const -> reducer_proxy_t<std::pair<S0, S1>, reducer_t<std::decay_t<Pred>, R0, R1>>
-    {
-        return { std::pair<S0, S1>{ std::move(on_true_reducer.state), std::move(on_false_reducer.state) },
-                 {
-                     std::forward<Pred>(pred),
-                     std::move(on_true_reducer.reducer),
-                     std::move(on_false_reducer.reducer),
-                 } };
-    }
-};
-
 struct join_fn
 {
     template <class Reducer>
@@ -682,6 +646,45 @@ struct into_fn
     }
 };
 
+struct partition_fn
+{
+    template <class Pred, class OnTrueReducer, class OnFalseReducer>
+    struct reducer_t
+    {
+        Pred m_pred;
+        OnTrueReducer m_on_true_reducer;
+        OnFalseReducer m_on_false_reducer;
+        mutable bool m_on_true_done = false;
+        mutable bool m_on_false_done = false;
+
+        template <class State, class... Args>
+        constexpr bool operator()(State& state, Args&&... args) const
+        {
+            if (std::invoke(m_pred, args...))
+            {
+                m_on_true_done = !m_on_true_reducer(state.first, std::forward<Args>(args)...);
+            }
+            else
+            {
+                m_on_false_done = !m_on_false_reducer(state.second, std::forward<Args>(args)...);
+            }
+            return !m_on_true_done && !m_on_false_done;
+        }
+    };
+
+    template <class Pred, class S0, class R0, class S1, class R1>
+    constexpr auto operator()(Pred&& pred, reducer_proxy_t<S0, R0> on_true_reducer, reducer_proxy_t<S1, R1> on_false_reducer)
+        const -> reducer_proxy_t<std::pair<S0, S1>, reducer_t<std::decay_t<Pred>, R0, R1>>
+    {
+        return { std::pair<S0, S1>{ std::move(on_true_reducer.state), std::move(on_false_reducer.state) },
+                 {
+                     std::forward<Pred>(pred),
+                     std::move(on_true_reducer.reducer),
+                     std::move(on_false_reducer.reducer),
+                 } };
+    }
+};
+
 struct fork_fn
 {
     template <class... Reducers>
@@ -690,23 +693,22 @@ struct fork_fn
         std::tuple<Reducers...> m_reducers;
 
         template <std::size_t N, class State, class... Args>
-        bool call(State& state, Args&&... args) const
+        void call(State& state, Args&&... args) const
         {
             if (!std::get<N>(m_reducers)(std::get<N>(state), args...))
             {
-                return false;
             }
             if constexpr (N + 1 < sizeof...(Reducers))
             {
-                return call<N + 1>(state, args...);
+                call<N + 1>(state, args...);
             }
-            return true;
         }
 
         template <class State, class... Args>
         bool operator()(State& state, Args&&... args) const
         {
-            return call<0>(state, args...);
+            call<0>(state, args...);
+            return true;
         }
     };
 
