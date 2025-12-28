@@ -1,9 +1,13 @@
 #pragma once
 
+#ifndef TRX_NAMESPACE
+#define TRX_NAMESPACE trx
+#endif  // TRX_NAMESPACE
+
 #include <tuple>
 #include <type_traits>
 
-namespace trx
+namespace TRX_NAMESPACE
 {
 
 template <class State, class Reducer>
@@ -701,4 +705,4 @@ static constexpr inline auto into = detail::into_fn{};
 static constexpr inline auto count
     = reducer_proxy_t{ std::ptrdiff_t{ 0 }, [](std::ptrdiff_t& state, auto&&...) { state += 1; } };
 
-}  // namespace trx
+}  // namespace TRX_NAMESPACE

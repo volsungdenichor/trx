@@ -1,4 +1,4 @@
-# trux
+# trx
 
 ## reducers
 
