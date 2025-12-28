@@ -212,3 +212,11 @@ std::vector<std::vector<int>> input = {{1, 2}, {3, 4}, {5, 6}};
 auto result = trx::reduce(trx::join |= trx::into(std::vector<int>{}), input);
 // result: {1, 2, 3, 4, 5, 6}
 ```
+
+### intersperse
+
+```cpp
+std::string input = "ABCD";
+auto result = trx::reduce(trx::intersperse(',') |= trx::into(std::string{}), input);
+// result: "A,B,C,D"
+```
