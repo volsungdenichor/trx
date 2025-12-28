@@ -74,14 +74,14 @@ struct to_reducer_fn
 
 struct reduce_fn
 {
-    template <class State, class Reducer, class Range>
-    constexpr auto operator()(reducer_proxy_t<State, Reducer> reducer, Range&& range) const -> State
+    template <class State, class Reducer, class Range_0>
+    constexpr auto operator()(reducer_proxy_t<State, Reducer> reducer, Range_0&& range_0) const -> State
     {
-        auto it = std::begin(range);
-        const auto end = std::end(range);
-        for (; it != end; ++it)
+        auto it_0 = std::begin(range_0);
+        const auto end_0 = std::end(range_0);
+        for (; it_0 != end_0; ++it_0)
         {
-            std::invoke(reducer.reducer, reducer.state, *it);
+            std::invoke(reducer.reducer, reducer.state, *it_0);
         }
         return reducer.state;
     }
@@ -115,6 +115,34 @@ struct reduce_fn
             std::invoke(reducer.reducer, reducer.state, *it_0, *it_1, *it_2);
         }
         return reducer.state;
+    }
+};
+
+constexpr inline auto reduce = reduce_fn{};
+
+struct from_fn
+{
+    template <class Range_0, class S, class R>
+    constexpr auto operator()(Range_0&& range_0, reducer_proxy_t<S, R> reducer) const -> S
+    {
+        return reduce(std::move(reducer), std::forward<Range_0>(range_0));
+    }
+
+    template <class Range_0, class Range_1, class S, class R>
+    constexpr auto operator()(Range_0&& range_0, Range_1&& range_1, reducer_proxy_t<S, R> reducer) const -> S
+    {
+        return reduce(std::move(reducer), std::forward<Range_0>(range_0), std::forward<Range_1>(range_1));
+    }
+
+    template <class Range_0, class Range_1, class Range_2, class S, class R>
+    constexpr auto operator()(Range_0&& range_0, Range_1&& range_1, Range_2&& range_2, reducer_proxy_t<S, R> reducer) const
+        -> S
+    {
+        return reduce(
+            std::move(reducer),
+            std::forward<Range_0>(range_0),
+            std::forward<Range_1>(range_1),
+            std::forward<Range_2>(range_2));
     }
 };
 
@@ -671,6 +699,7 @@ struct fork_fn
 }  // namespace detail
 
 constexpr inline auto reduce = detail::reduce_fn{};
+constexpr inline auto from = detail::from_fn{};
 constexpr inline auto invoke = detail::invoke_fn{};
 constexpr inline auto to_reducer = detail::to_reducer_fn{};
 
