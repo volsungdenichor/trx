@@ -72,6 +72,18 @@ struct to_reducer_fn
     }
 };
 
+struct invoke_fn
+{
+    template <class State, class Reducer, class... Args>
+    constexpr auto operator()(reducer_proxy_t<State, Reducer> reducer, Args&&... args) const -> State
+    {
+        std::invoke(reducer.reducer, reducer.state, std::forward<Args>(args)...);
+        return reducer.state;
+    }
+};
+
+constexpr inline auto invoke = invoke_fn{};
+
 struct reduce_fn
 {
     template <class State, class Reducer, class Range_0>
@@ -143,16 +155,6 @@ struct from_fn
             std::forward<Range_0>(range_0),
             std::forward<Range_1>(range_1),
             std::forward<Range_2>(range_2));
-    }
-};
-
-struct invoke_fn
-{
-    template <class State, class Reducer, class... Args>
-    constexpr auto operator()(reducer_proxy_t<State, Reducer> reducer, Args&&... args) const -> State
-    {
-        std::invoke(reducer.reducer, reducer.state, std::forward<Args>(args)...);
-        return reducer.state;
     }
 };
 
