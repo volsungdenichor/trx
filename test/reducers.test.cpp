@@ -69,3 +69,25 @@ TEST(reducers, output_iterator)
     EXPECT_THAT(result, testing::ElementsAre(20, 40));
     EXPECT_THAT(std::distance(result.begin(), res.get()), 2);
 }
+
+TEST(reducers, output_iterator_set_operations)
+{
+    const std::vector<int> a = { 1, 2, 3, 4, 5 };
+    const std::vector<int> b = { 2, 4, 6, 8, 10 };
+
+    EXPECT_THAT(
+        std::set_union(a.begin(), a.end(), b.begin(), b.end(), trx::out(trx::into(std::vector<int>{}))).get(),
+        testing::ElementsAre(1, 2, 3, 4, 5, 6, 8, 10));
+
+    EXPECT_THAT(
+        std::set_difference(a.begin(), a.end(), b.begin(), b.end(), trx::out(trx::into(std::vector<int>{}))).get(),
+        testing::ElementsAre(1, 3, 5));
+
+    EXPECT_THAT(
+        std::set_symmetric_difference(a.begin(), a.end(), b.begin(), b.end(), trx::out(trx::into(std::vector<int>{}))).get(),
+        testing::ElementsAre(1, 3, 5, 6, 8, 10));
+
+    EXPECT_THAT(
+        std::set_intersection(a.begin(), a.end(), b.begin(), b.end(), trx::out(trx::into(std::vector<int>{}))).get(),
+        testing::ElementsAre(2, 4));
+}
