@@ -218,13 +218,13 @@ Reducer sample(Reducer r)
 
 TEST(transducers, working_with_visitor)
 {
-    EXPECT_THAT(sample(trx::into(std::vector<int>{})).state, testing::ElementsAre(10, 12, 14));
-    EXPECT_THAT(sample(trx::all_of([](int x) { return x % 2 == 0; })).state, true);
+    EXPECT_THAT(sample(trx::into(std::vector<int>{})).get(), testing::ElementsAre(10, 12, 14));
+    EXPECT_THAT(sample(trx::all_of([](int x) { return x % 2 == 0; })).get(), true);
     EXPECT_THAT(
         sample(
             trx::filter([](int x) { return x != 10; })      //
             |= trx::transform([](int x) { return x * 2; })  //
             |= trx::into(std::vector<int>{}))
-            .state,
+            .get(),
         testing::ElementsAre(24, 28));
 }

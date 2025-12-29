@@ -54,3 +54,18 @@ TEST(reducers, fork)
     EXPECT_THAT(c, testing::ElementsAre(2, 4));
     EXPECT_THAT(d, 2);
 }
+
+TEST(reducers, output_iterator)
+{
+    const std::vector<int> input = { 1, 2, 3, 4, 5 };
+    std::vector<int> result(2);
+    auto res = std::copy(
+        input.begin(),
+        input.end(),
+        trx::out(
+            trx::filter([](int x) { return x % 2 == 0; }) |= trx::transform([](int v) { return v * 10; })
+            |= trx::copy_to(result.begin())));
+
+    EXPECT_THAT(result, testing::ElementsAre(20, 40));
+    EXPECT_THAT(std::distance(result.begin(), res.get()), 2);
+}

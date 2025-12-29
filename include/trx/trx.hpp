@@ -30,6 +30,21 @@ struct reducer_proxy_t
     {
         return std::invoke(reducer, state, std::forward<Args>(args)...);
     }
+
+    constexpr const state_type& get() const&
+    {
+        return state;
+    }
+
+    constexpr state_type& get() &
+    {
+        return state;
+    }
+
+    constexpr state_type&& get() &&
+    {
+        return std::move(state);
+    }
 };
 
 template <class State, class Reducer>
@@ -71,6 +86,66 @@ struct to_reducer_fn
     constexpr auto operator()(Reducer&& reducer) const -> impl_t<std::decay_t<Reducer>>
     {
         return { std::forward<Reducer>(reducer) };
+    }
+};
+
+template <class State, class Reducer>
+struct output_iterator_t
+{
+    using iterator_category = std::output_iterator_tag;
+    using value_type = void;
+    using difference_type = void;
+    using pointer = void;
+    using reference = void;
+    using state_type = State;
+    using reducer_type = Reducer;
+
+    reducer_proxy_t<State, Reducer> m_reducer_proxy;
+
+    constexpr output_iterator_t& operator*()
+    {
+        return *this;
+    }
+
+    constexpr output_iterator_t& operator++()
+    {
+        return *this;
+    }
+
+    constexpr output_iterator_t& operator++(int)
+    {
+        return *this;
+    }
+
+    template <class Arg>
+    constexpr output_iterator_t& operator=(Arg&& arg)
+    {
+        m_reducer_proxy(std::forward<Arg>(arg));
+        return *this;
+    }
+
+    constexpr const state_type& get() const&
+    {
+        return m_reducer_proxy.state;
+    }
+
+    constexpr state_type& get() &
+    {
+        return m_reducer_proxy.state;
+    }
+
+    constexpr state_type&& get() &&
+    {
+        return std::move(m_reducer_proxy.state);
+    }
+};
+
+struct out_fn
+{
+    template <class State, class Reducer>
+    constexpr auto operator()(reducer_proxy_t<State, Reducer> reducer) const -> output_iterator_t<State, Reducer>
+    {
+        return { std::move(reducer) };
     }
 };
 
@@ -726,6 +801,7 @@ struct fork_fn
 }  // namespace detail
 
 constexpr inline auto reduce = detail::reduce_fn{};
+constexpr inline auto out = detail::out_fn{};
 constexpr inline auto from = detail::from_fn{};
 constexpr inline auto to_reducer = detail::to_reducer_fn{};
 
