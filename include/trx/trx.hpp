@@ -845,6 +845,15 @@ struct fork_fn
     }
 };
 
+struct sum_fn
+{
+    template <class T>
+    constexpr auto operator()(T value) const
+    {
+        return reducer_proxy_t{ value, to_reducer_fn{}(std::plus<>{}) };
+    }
+};
+
 }  // namespace detail
 
 constexpr inline auto reduce = detail::reduce_fn{};
@@ -886,5 +895,7 @@ static constexpr inline auto count = reducer_proxy_t{ std::size_t{ 0 },
                                                           state += 1;
                                                           return true;
                                                       } };
+
+static constexpr inline auto sum = detail::sum_fn{};
 
 }  // namespace TRX_NAMESPACE

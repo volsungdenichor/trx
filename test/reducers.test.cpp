@@ -70,6 +70,22 @@ TEST(reducers, output_iterator)
     EXPECT_THAT(std::distance(result.begin(), res.get()), 2);
 }
 
+TEST(reducers, output_iterator_with_std_generate_n)
+{
+    EXPECT_THAT(
+        std::generate_n(
+            trx::out(trx::transform(str) |= trx::into(std::vector<std::string>{})),
+            7,
+            [state = std::make_pair(1, 1)]() mutable -> int
+            {
+                const auto value = state.first;
+                state = std::make_pair(state.second, state.first + state.second);
+                return value;
+            })
+            .get(),
+        testing::ElementsAre("1", "1", "2", "3", "5", "8", "13"));
+}
+
 TEST(reducers, output_iterator_set_operations)
 {
     const std::vector<int> a = { 1, 2, 3, 4, 5 };
@@ -98,6 +114,11 @@ TEST(reducers, output_iterator_set_operations)
             a.begin(), a.end(), b.begin(), b.end(), trx::out(trx::transform(str) |= trx::into(std::vector<std::string>{})))
             .get(),
         testing::ElementsAre("2", "4"));
+}
+
+TEST(reducers, sum)
+{
+    EXPECT_THAT(trx::from(std::vector<int>{ 1, 2, 3, 4, 5 }, trx::sum(0)), 15);
 }
 
 TEST(reducers, generator)
