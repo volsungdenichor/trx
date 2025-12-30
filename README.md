@@ -118,6 +118,19 @@ auto result = trx::from(input, trx::transform([](int x) { return x * 2; }) |= tr
 // result: {2, 4, 6, 8, 10}
 ```
 
+## transform_indexed
+Applies a function to each item along with its index and passes the result to the next reducer.
+
+```cpp
+std::vector<std::string> input = {"a", "b", "c"};
+auto result = trx::from(
+    input,
+    trx::transform_indexed([](std::ptrdiff_t idx, const std::string& s) {
+        return std::to_string(idx) + ":" + s;
+    }) |= trx::into(std::vector<std::string>{}));
+// result: {"0:a", "1:b", "2:c"}
+```
+
 ### filter
 Only passes items that satisfy a predicate to the next reducer.
 
@@ -127,6 +140,18 @@ auto result = trx::from(input, trx::filter([](int x) { return x % 2 == 0; }) |= 
 // result: {2, 4, 6}
 ```
 
+### filter_indexed
+Only passes items that satisfy an index-aware predicate to the next reducer.
+
+```cpp
+std::vector<int> input = {10, 20, 30, 40, 50};
+auto result = trx::from(
+    input,
+    trx::filter_indexed([](std::ptrdiff_t idx, int x) {
+        return idx % 2 == 0;  // keep items at even indices
+    }) |= trx::into(std::vector<int>{}));
+// result: {10, 30, 50}
+
 ### inspect
 Executes a function for side effects on each item without modifying the item passed to the next reducer.
 
@@ -134,6 +159,20 @@ Executes a function for side effects on each item without modifying the item pas
 std::vector<int> input = {1, 2, 3};
 auto result = trx::from(input, trx::inspect([](int x) { std::cout << x << " "; }) |= trx::into(std::vector<int>{}));
 // Prints: 1 2 3
+// result: {1, 2, 3}
+```
+
+### inspect_indexed
+Executes a function for side effects on each item and its index without modifying the item passed to the next reducer.
+
+```cpp
+std::vector<int> input = {1, 2, 3};
+auto result = trx::from(
+    input,
+    trx::inspect_indexed([](std::ptrdiff_t idx, int x) {
+        std::cout << "[" << idx << "]=" << x << " ";
+    }) |= trx::into(std::vector<int>{}));
+// Prints: [0]=1 [1]=2 [2]=3
 // result: {1, 2, 3}
 ```
 
@@ -155,6 +194,24 @@ auto result = trx::from(
 // result: {1, 2, 4} (skips "abc")
 ```
 
+### transform_maybe_indexed
+Applies an index-aware function that returns an optional value, only passing non-empty results to the next reducer.
+
+```cpp
+std::vector<std::string> input = {"1", "2", "abc", "4"};
+auto result = trx::from(
+    input,
+    trx::transform_maybe_indexed([](std::ptrdiff_t idx, const std::string& s) -> std::optional<int> {
+        try {
+            return std::stoi(s) * idx;  // multiply by index
+        }
+        catch (...) {
+            return std::nullopt;
+        }
+    }) |= trx::into(std::vector<int>{}));
+// result: {0, 2, 12} (0*0, 2*1, skips "abc", 4*3)
+```
+
 ### take_while
 Passes items to the next reducer while a predicate is true, stopping once it becomes false.
 
@@ -164,12 +221,38 @@ auto result = trx::from(input, trx::take_while([](int x) { return x < 4; }) |= t
 // result: {1, 2, 3}
 ```
 
+### take_while_indexed
+Passes items to the next reducer while an index-aware predicate is true, stopping once it becomes false.
+
+```cpp
+std::vector<int> input = {1, 2, 3, 4, 5, 3, 2, 1};
+auto result = trx::from(
+    input,
+    trx::take_while_indexed([](std::ptrdiff_t idx, int x) {
+        return idx < 3;  // take first 3 items
+    }) |= trx::into(std::vector<int>{}));
+// result: {1, 2, 3}
+```
+
 ### drop_while
 Skips items while a predicate is true, then passes all remaining items to the next reducer.
 
 ```cpp
 std::vector<int> input = {1, 2, 3, 4, 5, 3, 2, 1};
 auto result = trx::from(input, trx::drop_while([](int x) { return x < 4; }) |= into(std::vector<int>{}));
+// result: {4, 5, 3, 2, 1}
+```
+
+### drop_while_indexed
+Skips items while an index-aware predicate is true, then passes all remaining items to the next reducer.
+
+```cpp
+std::vector<int> input = {1, 2, 3, 4, 5, 3, 2, 1};
+auto result = trx::from(
+    input,
+    trx::drop_while_indexed([](std::ptrdiff_t idx, int x) {
+        return idx < 3;  // skip first 3 items
+    }) |= trx::into(std::vector<int>{}));
 // result: {4, 5, 3, 2, 1}
 ```
 
