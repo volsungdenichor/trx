@@ -1,85 +1,5 @@
 # trx
 
-## reducers
-
-### dev_null
-A reducer that discards all items, useful for situations where you want to run transducers for side effects only.
-
-```cpp
-std::vector<int> input = {1, 2, 3, 4, 5};
-trx::from(input, trx::inspect([](int x) { std::cout << x << " "; }) |= trx::dev_null);
-// Prints: 1 2 3 4 5
-```
-
-### partition
-Distributes items into two separate reducers based on a predicate condition, creating a pair of results.
-
-```cpp
-std::vector<int> input = {1, 2, 3, 4, 5};
-auto [first, second] = trx::from(
-    input,
-    trx::partition(
-        [](int x) { return x % 2 == 0; },
-        trx::into(std::vector<int>{}),
-        trx::into(std::vector<int>{}))
-);
-// first: {2, 4} (even numbers)
-// second: {1, 3, 5} (odd numbers)
-```
-
-### fork
-Sends the same item to multiple reducers simultaneously, collecting results into a tuple.
-
-```cpp
-std::vector<int> input = {1, 2, 3, 4, 5};
-auto [first, second] = trx::from(
-    input,
-    trx::fork(
-        trx::into(std::vector<int>{}),
-        trx::count)
-);
-// first: {1, 2, 3, 4, 5}
-// second: 5
-```
-
-### copy_to
-Copies items to an output iterator, advancing the iterator with each element.
-
-```cpp
-std::vector<int> input = {1, 2, 3, 4, 5};
-std::vector<int> dest(5);
-trx::from(input, trx::copy_to(dest.begin()));
-// dest: {1, 2, 3, 4, 5}
-```
-
-### push_back
-Appends items to the end of a container.
-
-```cpp
-std::vector<int> input = {1, 2, 3};
-std::vector<int> result;
-trx::from(input, trx::push_back(result));
-// result: {1, 2, 3}
-```
-
-### into
-Creates a reducer that builds a container by appending items to it using push_back semantics.
-
-```cpp
-std::vector<int> input = {1, 2, 3, 4, 5};
-auto result = trx::from(input, trx::into(std::vector<int>{}));
-// result: {1, 2, 3, 4, 5}
-```
-
-### count
-Counts the total number of items processed by the reducer.
-
-```cpp
-std::vector<int> input = {1, 2, 3, 4, 5};
-auto result = trx::from(input, trx::count);
-// result: 5
-```
-
 ## transducers
 
 ### all_of
@@ -299,4 +219,84 @@ auto result = trx::from(input, trx::join |= trx::into(std::vector<int>{}));
 std::string input = "ABCD";
 auto result = trx::from(input, trx::intersperse(',') |= trx::into(std::string{}));
 // result: "A,B,C,D"
+```
+
+## reducers
+
+### dev_null
+A reducer that discards all items, useful for situations where you want to run transducers for side effects only.
+
+```cpp
+std::vector<int> input = {1, 2, 3, 4, 5};
+trx::from(input, trx::inspect([](int x) { std::cout << x << " "; }) |= trx::dev_null);
+// Prints: 1 2 3 4 5
+```
+
+### partition
+Distributes items into two separate reducers based on a predicate condition, creating a pair of results.
+
+```cpp
+std::vector<int> input = {1, 2, 3, 4, 5};
+auto [first, second] = trx::from(
+    input,
+    trx::partition(
+        [](int x) { return x % 2 == 0; },
+        trx::into(std::vector<int>{}),
+        trx::into(std::vector<int>{}))
+);
+// first: {2, 4} (even numbers)
+// second: {1, 3, 5} (odd numbers)
+```
+
+### fork
+Sends the same item to multiple reducers simultaneously, collecting results into a tuple.
+
+```cpp
+std::vector<int> input = {1, 2, 3, 4, 5};
+auto [first, second] = trx::from(
+    input,
+    trx::fork(
+        trx::into(std::vector<int>{}),
+        trx::count)
+);
+// first: {1, 2, 3, 4, 5}
+// second: 5
+```
+
+### copy_to
+Copies items to an output iterator, advancing the iterator with each element.
+
+```cpp
+std::vector<int> input = {1, 2, 3, 4, 5};
+std::vector<int> dest(5);
+trx::from(input, trx::copy_to(dest.begin()));
+// dest: {1, 2, 3, 4, 5}
+```
+
+### push_back
+Appends items to the end of a container.
+
+```cpp
+std::vector<int> input = {1, 2, 3};
+std::vector<int> result;
+trx::from(input, trx::push_back(result));
+// result: {1, 2, 3}
+```
+
+### into
+Creates a reducer that builds a container by appending items to it using push_back semantics.
+
+```cpp
+std::vector<int> input = {1, 2, 3, 4, 5};
+auto result = trx::from(input, trx::into(std::vector<int>{}));
+// result: {1, 2, 3, 4, 5}
+```
+
+### count
+Counts the total number of items processed by the reducer.
+
+```cpp
+std::vector<int> input = {1, 2, 3, 4, 5};
+auto result = trx::from(input, trx::count);
+// result: 5
 ```
