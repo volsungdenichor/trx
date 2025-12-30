@@ -781,23 +781,21 @@ struct partition_fn
     struct reducer_t
     {
         Pred m_pred;
-        OnTrueReducer m_on_true_reducer;
-        OnFalseReducer m_on_false_reducer;
-        mutable bool m_on_true_done = false;
-        mutable bool m_on_false_done = false;
+        std::tuple<OnTrueReducer, OnFalseReducer> m_reducers;
+        mutable std::bitset<2> m_done{};
 
         template <class State, class... Args>
         constexpr bool operator()(State& state, Args&&... args) const
         {
             if (std::invoke(m_pred, args...))
             {
-                m_on_true_done = !m_on_true_reducer(state.first, std::forward<Args>(args)...);
+                m_done[0] = !std::get<0>(m_reducers)(state.first, std::forward<Args>(args)...);
             }
             else
             {
-                m_on_false_done = !m_on_false_reducer(state.second, std::forward<Args>(args)...);
+                m_done[1] = !std::get<1>(m_reducers)(state.second, std::forward<Args>(args)...);
             }
-            return !m_on_true_done && !m_on_false_done;
+            return !m_done.all();
         }
     };
 
@@ -805,12 +803,8 @@ struct partition_fn
     constexpr auto operator()(Pred&& pred, reducer_proxy_t<S0, R0> on_true_reducer, reducer_proxy_t<S1, R1> on_false_reducer)
         const -> reducer_proxy_t<std::pair<S0, S1>, reducer_t<std::decay_t<Pred>, R0, R1>>
     {
-        return { std::pair<S0, S1>{ std::move(on_true_reducer.state), std::move(on_false_reducer.state) },
-                 {
-                     std::forward<Pred>(pred),
-                     std::move(on_true_reducer.reducer),
-                     std::move(on_false_reducer.reducer),
-                 } };
+        return { { std::move(on_true_reducer.state), std::move(on_false_reducer.state) },
+                 { std::forward<Pred>(pred), { std::move(on_true_reducer.reducer), std::move(on_false_reducer.reducer) } } };
     }
 };
 
