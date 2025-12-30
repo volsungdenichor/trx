@@ -417,6 +417,33 @@ struct filter_fn
     }
 };
 
+struct filter_indexed_fn
+{
+    template <class Reducer, class Pred>
+    struct reducer_t
+    {
+        Reducer m_next_reducer;
+        Pred m_pred;
+        mutable std::ptrdiff_t m_index = 0;
+
+        template <class State, class... Args>
+        constexpr bool operator()(State& state, Args&&... args) const
+        {
+            if (std::invoke(m_pred, m_index++, std::forward<Args>(args)...))
+            {
+                return m_next_reducer(state, std::forward<Args>(args)...);
+            }
+            return true;
+        }
+    };
+
+    template <class Pred>
+    constexpr auto operator()(Pred&& pred) const -> transducer_t<reducer_t, std::decay_t<Pred>>
+    {
+        return { std::forward<Pred>(pred) };
+    }
+};
+
 struct transform_fn
 {
     template <class Reducer, class Func>
@@ -429,6 +456,29 @@ struct transform_fn
         constexpr bool operator()(State& state, Args&&... args) const
         {
             return m_next_reducer(state, std::invoke(m_func, std::forward<Args>(args)...));
+        }
+    };
+
+    template <class Func>
+    constexpr auto operator()(Func&& func) const -> transducer_t<reducer_t, std::decay_t<Func>>
+    {
+        return { std::forward<Func>(func) };
+    }
+};
+
+struct transform_indexed_fn
+{
+    template <class Reducer, class Func>
+    struct reducer_t
+    {
+        Reducer m_next_reducer;
+        Func m_func;
+        mutable std::ptrdiff_t m_index = 0;
+
+        template <class State, class... Args>
+        constexpr bool operator()(State& state, Args&&... args) const
+        {
+            return m_next_reducer(state, std::invoke(m_func, m_index++, std::forward<Args>(args)...));
         }
     };
 
@@ -462,6 +512,30 @@ struct inspect_fn
     }
 };
 
+struct inspect_indexed_fn
+{
+    template <class Reducer, class Func>
+    struct reducer_t
+    {
+        Reducer m_next_reducer;
+        Func m_func;
+        mutable std::ptrdiff_t m_index = 0;
+
+        template <class State, class... Args>
+        constexpr bool operator()(State& state, Args&&... args) const
+        {
+            std::invoke(m_func, m_index++, args...);
+            return m_next_reducer(state, std::forward<Args>(args)...);
+        }
+    };
+
+    template <class Func>
+    constexpr auto operator()(Func&& func) const -> transducer_t<reducer_t, std::decay_t<Func>>
+    {
+        return { std::forward<Func>(func) };
+    }
+};
+
 struct transform_maybe_fn
 {
     template <class Reducer, class Func>
@@ -474,6 +548,33 @@ struct transform_maybe_fn
         constexpr bool operator()(State& state, Args&&... args) const
         {
             if (auto res = std::invoke(m_func, std::forward<Args>(args)...))
+            {
+                return m_next_reducer(state, *std::move(res));
+            }
+            return true;
+        }
+    };
+
+    template <class Func>
+    constexpr auto operator()(Func&& func) const -> transducer_t<reducer_t, std::decay_t<Func>>
+    {
+        return { std::forward<Func>(func) };
+    }
+};
+
+struct transform_maybe_indexed_fn
+{
+    template <class Reducer, class Func>
+    struct reducer_t
+    {
+        Reducer m_next_reducer;
+        Func m_func;
+        mutable std::ptrdiff_t m_index = 0;
+
+        template <class State, class... Args>
+        constexpr bool operator()(State& state, Args&&... args) const
+        {
+            if (auto res = std::invoke(m_func, m_index++, std::forward<Args>(args)...))
             {
                 return m_next_reducer(state, *std::move(res));
             }
@@ -517,6 +618,36 @@ struct take_while_fn
     }
 };
 
+struct take_while_indexed_fn
+{
+    template <class Reducer, class Pred>
+    struct reducer_t
+    {
+        Reducer m_next_reducer;
+        Pred m_pred;
+
+        mutable bool m_done = false;
+        mutable std::ptrdiff_t m_index = 0;
+
+        template <class State, class... Args>
+        constexpr bool operator()(State& state, Args&&... args) const
+        {
+            m_done |= !std::invoke(m_pred, m_index++, args...);
+            if (!m_done)
+            {
+                return m_next_reducer(state, std::forward<Args>(args)...);
+            }
+            return false;
+        }
+    };
+
+    template <class Pred>
+    constexpr auto operator()(Pred&& pred) const -> transducer_t<reducer_t, std::decay_t<Pred>>
+    {
+        return { std::forward<Pred>(pred) };
+    }
+};
+
 struct drop_while_fn
 {
     template <class Reducer, class Pred>
@@ -531,6 +662,36 @@ struct drop_while_fn
         constexpr bool operator()(State& state, Args&&... args) const
         {
             m_done |= !std::invoke(m_pred, args...);
+            if (m_done)
+            {
+                return m_next_reducer(state, std::forward<Args>(args)...);
+            }
+            return true;
+        }
+    };
+
+    template <class Pred>
+    constexpr auto operator()(Pred&& pred) const -> transducer_t<reducer_t, std::decay_t<Pred>>
+    {
+        return { std::forward<Pred>(pred) };
+    }
+};
+
+struct drop_while_indexed_fn
+{
+    template <class Reducer, class Pred>
+    struct reducer_t
+    {
+        Reducer m_next_reducer;
+        Pred m_pred;
+
+        mutable bool m_done = false;
+        mutable std::ptrdiff_t m_index = 0;
+
+        template <class State, class... Args>
+        constexpr bool operator()(State& state, Args&&... args) const
+        {
+            m_done |= !std::invoke(m_pred, m_index++, args...);
             if (m_done)
             {
                 return m_next_reducer(state, std::forward<Args>(args)...);
@@ -852,12 +1013,22 @@ static constexpr inline auto any_of = detail::any_of_fn{};
 static constexpr inline auto none_of = detail::none_of_fn{};
 
 static constexpr inline auto transform = detail::transform_fn{};
+static constexpr inline auto transform_indexed = detail::transform_indexed_fn{};
+
 static constexpr inline auto filter = detail::filter_fn{};
+static constexpr inline auto filter_indexed = detail::filter_indexed_fn{};
+
 static constexpr inline auto inspect = detail::inspect_fn{};
+static constexpr inline auto inspect_indexed = detail::inspect_indexed_fn{};
+
 static constexpr inline auto transform_maybe = detail::transform_maybe_fn{};
+static constexpr inline auto transform_maybe_indexed = detail::transform_maybe_indexed_fn{};
 
 static constexpr inline auto take_while = detail::take_while_fn{};
+static constexpr inline auto take_while_indexed = detail::take_while_indexed_fn{};
+
 static constexpr inline auto drop_while = detail::drop_while_fn{};
+static constexpr inline auto drop_while_indexed = detail::drop_while_indexed_fn{};
 
 static constexpr inline auto take = detail::take_fn{};
 static constexpr inline auto drop = detail::drop_fn{};

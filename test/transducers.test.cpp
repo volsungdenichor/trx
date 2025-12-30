@@ -93,12 +93,80 @@ TEST(transducers, transform)
         testing::ElementsAre("ALABAMA", "ALASKA", "ARIZONA", "ARKANSAS"));
 }
 
+TEST(transducers, transform_indexed)
+{
+    const auto xform = trx::transform_indexed(
+        [](std::ptrdiff_t index, const std::string& str) -> std::string
+        { return index % 2 == 0 ? uppercase(str) : lowercase(str); })
+        |= trx::into(std::vector<std::string>{});
+
+    EXPECT_THAT(
+        trx::reduce(xform, std::vector<std::string>{ "Alabama", "Alaska", "Arizona", "Arkansas" }),
+        testing::ElementsAre("ALABAMA", "alaska", "ARIZONA", "arkansas"));
+    EXPECT_THAT(
+        trx::from(std::vector<std::string>{ "Alabama", "Alaska", "Arizona", "Arkansas" }, xform),
+        testing::ElementsAre("ALABAMA", "alaska", "ARIZONA", "arkansas"));
+}
+
+TEST(transducers, transform_maybe)
+{
+    const auto xform = trx::transform_maybe(
+        [](const std::string& str) -> std::optional<std::string>
+        {
+            if (str[0] == 'A')
+            {
+                return uppercase(str);
+            }
+            return std::nullopt;
+        })
+        |= trx::into(std::vector<std::string>{});
+
+    EXPECT_THAT(
+        trx::reduce(xform, std::vector<std::string>{ "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado" }),
+        testing::ElementsAre("ALABAMA", "ALASKA", "ARIZONA", "ARKANSAS"));
+    EXPECT_THAT(
+        trx::from(std::vector<std::string>{ "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado" }, xform),
+        testing::ElementsAre("ALABAMA", "ALASKA", "ARIZONA", "ARKANSAS"));
+}
+
+TEST(transducers, transform_maybe_indexed)
+{
+    const auto xform = trx::transform_maybe_indexed(
+        [](std::ptrdiff_t index, const std::string& str) -> std::optional<std::string>
+        {
+            if (index % 2 == 0)
+            {
+                return uppercase(str);
+            }
+            return std::nullopt;
+        })
+        |= trx::into(std::vector<std::string>{});
+
+    EXPECT_THAT(
+        trx::reduce(xform, std::vector<std::string>{ "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado" }),
+        testing::ElementsAre("ALABAMA", "ARIZONA", "CALIFORNIA"));
+    EXPECT_THAT(
+        trx::from(std::vector<std::string>{ "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado" }, xform),
+        testing::ElementsAre("ALABAMA", "ARIZONA", "CALIFORNIA"));
+}
+
 TEST(transducers, filter)
 {
     const auto xform = trx::filter(is_even) |= trx::into(std::vector<int>{});
 
     EXPECT_THAT(trx::reduce(xform, std::vector<int>{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }), testing::ElementsAre(2, 4, 6, 8, 10));
     EXPECT_THAT(trx::from(std::vector<int>{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }, xform), testing::ElementsAre(2, 4, 6, 8, 10));
+}
+
+TEST(transducers, filter_indexed)
+{
+    const auto xform = trx::filter_indexed([](std::ptrdiff_t index, int x) { return index % 3 == 0 || x % 2 == 0; })
+        |= trx::into(std::vector<int>{});
+
+    EXPECT_THAT(
+        trx::reduce(xform, std::vector<int>{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }), testing::ElementsAre(1, 2, 4, 6, 7, 8, 10));
+    EXPECT_THAT(
+        trx::from(std::vector<int>{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }, xform), testing::ElementsAre(1, 2, 4, 6, 7, 8, 10));
 }
 
 TEST(transducers, take)
@@ -157,6 +225,22 @@ TEST(transducers, take_while)
     EXPECT_THAT(trx::from(std::vector<int>{ 2, 4, 6, 8 }, xform), testing::ElementsAre(2, 4, 6, 8));
 }
 
+TEST(transducers, take_while_indexed)
+{
+    const auto xform = trx::take_while_indexed([](std::ptrdiff_t index, int value) { return index < 2 && is_even(value); })
+        |= trx::into(std::vector<int>{});
+
+    EXPECT_THAT(trx::reduce(xform, std::vector<int>{}), testing::IsEmpty());
+    EXPECT_THAT(trx::reduce(xform, std::vector<int>{ 2, 3, 4 }), testing::ElementsAre(2));
+    EXPECT_THAT(trx::reduce(xform, std::vector<int>{ 1, 2, 3 }), testing::IsEmpty());
+    EXPECT_THAT(trx::reduce(xform, std::vector<int>{ 2, 4, 6, 8 }), testing::ElementsAre(2, 4));
+
+    EXPECT_THAT(trx::from(std::vector<int>{}, xform), testing::IsEmpty());
+    EXPECT_THAT(trx::from(std::vector<int>{ 2, 3, 4 }, xform), testing::ElementsAre(2));
+    EXPECT_THAT(trx::from(std::vector<int>{ 1, 2, 3 }, xform), testing::IsEmpty());
+    EXPECT_THAT(trx::from(std::vector<int>{ 2, 4, 6, 8 }, xform), testing::ElementsAre(2, 4));
+}
+
 TEST(transducers, drop_while)
 {
     const auto xform = trx::drop_while(is_even) |= trx::into(std::vector<int>{});
@@ -170,6 +254,22 @@ TEST(transducers, drop_while)
     EXPECT_THAT(trx::from(std::vector<int>{ 2, 3, 4 }, xform), testing::ElementsAre(3, 4));
     EXPECT_THAT(trx::from(std::vector<int>{ 1, 2, 3 }, xform), testing::ElementsAre(1, 2, 3));
     EXPECT_THAT(trx::from(std::vector<int>{ 2, 4, 6, 8 }, xform), testing::IsEmpty());
+}
+
+TEST(transducers, drop_while_indexed)
+{
+    const auto xform = trx::drop_while_indexed([](std::ptrdiff_t index, int value) { return index < 2 && is_even(value); })
+        |= trx::into(std::vector<int>{});
+
+    EXPECT_THAT(trx::reduce(xform, std::vector<int>{}), testing::IsEmpty());
+    EXPECT_THAT(trx::reduce(xform, std::vector<int>{ 2, 3, 4 }), testing::ElementsAre(3, 4));
+    EXPECT_THAT(trx::reduce(xform, std::vector<int>{ 1, 2, 3 }), testing::ElementsAre(1, 2, 3));
+    EXPECT_THAT(trx::reduce(xform, std::vector<int>{ 2, 4, 6, 8 }), testing::ElementsAre(6, 8));
+
+    EXPECT_THAT(trx::from(std::vector<int>{}, xform), testing::IsEmpty());
+    EXPECT_THAT(trx::from(std::vector<int>{ 2, 3, 4 }, xform), testing::ElementsAre(3, 4));
+    EXPECT_THAT(trx::from(std::vector<int>{ 1, 2, 3 }, xform), testing::ElementsAre(1, 2, 3));
+    EXPECT_THAT(trx::from(std::vector<int>{ 2, 4, 6, 8 }, xform), testing::ElementsAre(6, 8));
 }
 
 TEST(transducers, join)
@@ -207,54 +307,23 @@ TEST(transducers, join_take_with_early_termination)
         testing::Eq("AlphaBetaG"));
 }
 
-template <class... Args>
-struct consumer_t
+auto sample() -> trx::generator_t<int>
 {
-    using func_type = void (*)(void*, Args...);
-
-    void* m_obj;
-    func_type m_func;
-
-    template <class Func>
-    constexpr consumer_t(Func&& func)
-        : m_obj{ &func }
-        , m_func{ [](void* obj, Args... args)
-                  { std::invoke(*static_cast<std::remove_reference_t<Func>*>(obj), std::forward<Args>(args)...); } }
-    {
-    }
-
-    template <class... CallArgs>
-    constexpr void operator()(CallArgs&&... args) const
-    {
-        m_func(m_obj, std::forward<CallArgs>(args)...);
-    }
-};
-
-void sample(consumer_t<int> r)
-{
-    r(10);
-    r(12);
-    r(14);
-}
-
-template <class Func, class Reducer>
-Reducer call(Func func, Reducer reducer)
-{
-    std::invoke(func, reducer);
-    return reducer;
+    return trx::generator_t<int>{ [](trx::generator_t<int>::consumer_type r)
+                                  {
+                                      r(10);
+                                      r(12);
+                                      r(14);
+                                  } };
 }
 
 TEST(transducers, working_with_visitor)
 {
-    sample([](int value) { std::cout << "Value: " << value << '\n'; });
-    EXPECT_THAT(call(sample, trx::into(std::vector<int>{})).get(), testing::ElementsAre(10, 12, 14));
-    EXPECT_THAT(call(sample, trx::all_of([](int x) { return x % 2 == 0; })).get(), true);
+    EXPECT_THAT(sample() |= trx::into(std::vector<int>{}), testing::ElementsAre(10, 12, 14));
+    EXPECT_THAT(sample() |= trx::all_of([](int x) { return x % 2 == 0; }), true);
     EXPECT_THAT(
-        call(
-            sample,
-            trx::filter([](int x) { return x != 10; })      //
-            |= trx::transform([](int x) { return x * 2; })  //
-            |= trx::into(std::vector<int>{}))
-            .get(),
+        sample() |= trx::filter([](int x) { return x != 10; })  //
+        |= trx::transform([](int x) { return x * 2; })          //
+        |= trx::into(std::vector<int>{}),
         testing::ElementsAre(24, 28));
 }
