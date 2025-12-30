@@ -207,21 +207,51 @@ TEST(transducers, join_take_with_early_termination)
         testing::Eq("AlphaBetaG"));
 }
 
-template <class Reducer>
-Reducer sample(Reducer r)
+template <class... Args>
+struct consumer_t
+{
+    using func_type = void (*)(void*, Args...);
+
+    void* m_obj;
+    func_type m_func;
+
+    template <class Func>
+    constexpr consumer_t(Func&& func)
+        : m_obj{ &func }
+        , m_func{ [](void* obj, Args... args)
+                  { std::invoke(*static_cast<std::remove_reference_t<Func>*>(obj), std::forward<Args>(args)...); } }
+    {
+    }
+
+    template <class... CallArgs>
+    constexpr void operator()(CallArgs&&... args) const
+    {
+        m_func(m_obj, std::forward<CallArgs>(args)...);
+    }
+};
+
+void sample(consumer_t<int> r)
 {
     r(10);
     r(12);
     r(14);
-    return r;
+}
+
+template <class Func, class Reducer>
+Reducer call(Func func, Reducer reducer)
+{
+    std::invoke(func, reducer);
+    return reducer;
 }
 
 TEST(transducers, working_with_visitor)
 {
-    EXPECT_THAT(sample(trx::into(std::vector<int>{})).get(), testing::ElementsAre(10, 12, 14));
-    EXPECT_THAT(sample(trx::all_of([](int x) { return x % 2 == 0; })).get(), true);
+    sample([](int value) { std::cout << "Value: " << value << '\n'; });
+    EXPECT_THAT(call(sample, trx::into(std::vector<int>{})).get(), testing::ElementsAre(10, 12, 14));
+    EXPECT_THAT(call(sample, trx::all_of([](int x) { return x % 2 == 0; })).get(), true);
     EXPECT_THAT(
-        sample(
+        call(
+            sample,
             trx::filter([](int x) { return x != 10; })      //
             |= trx::transform([](int x) { return x * 2; })  //
             |= trx::into(std::vector<int>{}))

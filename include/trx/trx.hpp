@@ -5,6 +5,7 @@
 #endif  // TRX_NAMESPACE
 
 #include <bitset>
+#include <functional>
 #include <tuple>
 #include <type_traits>
 
@@ -62,6 +63,58 @@ constexpr auto operator|=(Transducer&& transducer, reducer_proxy_t<State, Reduce
     -> reducer_proxy_t<State, std::invoke_result_t<Transducer, Reducer>>
 {
     return { std::move(proxy.state), std::invoke(std::forward<Transducer>(transducer), std::move(proxy.reducer)) };
+}
+
+template <class Signature>
+struct function_ref;
+
+template <class Ret, class... Args>
+struct function_ref<Ret(Args...)>
+{
+    using return_type = Ret;
+    using func_type = return_type (*)(void*, Args...);
+
+    void* m_obj;
+    func_type m_func;
+
+    template <class Func>
+    constexpr function_ref(Func&& func)
+        : m_obj{ const_cast<void*>(reinterpret_cast<const void*>(std::addressof(func))) }
+        , m_func{ [](void* obj, Args... args) -> return_type
+                  {
+                      if constexpr (std::is_void_v<return_type>)
+                      {
+                          std::invoke(*static_cast<std::add_pointer_t<Func>>(obj), std::forward<Args>(args)...);
+                      }
+                      else
+                      {
+                          return std::invoke(*static_cast<std::add_pointer_t<Func>>(obj), std::forward<Args>(args)...);
+                      }
+                  } }
+    {
+    }
+
+    template <class... CallArgs>
+    constexpr return_type operator()(CallArgs&&... args) const
+    {
+        return m_func(m_obj, std::forward<CallArgs>(args)...);
+    }
+};
+
+template <class... Args>
+struct generator_t : public std::function<void(function_ref<void(Args...)>)>
+{
+    using consumer_type = function_ref<void(Args...)>;
+    using base_t = std::function<void(function_ref<void(Args...)>)>;
+
+    using base_t::base_t;
+};
+
+template <class... Args, class State, class Reducer>
+constexpr State operator|=(generator_t<Args...> generator, reducer_proxy_t<State, Reducer> reducer)
+{
+    generator(typename generator_t<Args...>::consumer_type{ reducer });
+    return reducer.state;
 }
 
 namespace detail
@@ -208,21 +261,21 @@ constexpr inline auto reduce = reduce_fn{};
 
 struct from_fn
 {
-    template <class Range_0, class S, class R>
-    constexpr auto operator()(Range_0&& range_0, reducer_proxy_t<S, R> reducer) const -> S
+    template <class Range_0, class State, class Reducer>
+    constexpr auto operator()(Range_0&& range_0, reducer_proxy_t<State, Reducer> reducer) const -> State
     {
         return reduce(std::move(reducer), std::forward<Range_0>(range_0));
     }
 
-    template <class Range_0, class Range_1, class S, class R>
-    constexpr auto operator()(Range_0&& range_0, Range_1&& range_1, reducer_proxy_t<S, R> reducer) const -> S
+    template <class Range_0, class Range_1, class State, class Reducer>
+    constexpr auto operator()(Range_0&& range_0, Range_1&& range_1, reducer_proxy_t<State, Reducer> reducer) const -> State
     {
         return reduce(std::move(reducer), std::forward<Range_0>(range_0), std::forward<Range_1>(range_1));
     }
 
-    template <class Range_0, class Range_1, class Range_2, class S, class R>
-    constexpr auto operator()(Range_0&& range_0, Range_1&& range_1, Range_2&& range_2, reducer_proxy_t<S, R> reducer) const
-        -> S
+    template <class Range_0, class Range_1, class Range_2, class State, class Reducer>
+    constexpr auto operator()(
+        Range_0&& range_0, Range_1&& range_1, Range_2&& range_2, reducer_proxy_t<State, Reducer> reducer) const -> State
     {
         return reduce(
             std::move(reducer),

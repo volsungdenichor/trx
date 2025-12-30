@@ -99,3 +99,18 @@ TEST(reducers, output_iterator_set_operations)
             .get(),
         testing::ElementsAre("2", "4"));
 }
+
+TEST(reducers, generator)
+{
+    const auto result = trx::generator_t<int>{ [](trx::generator_t<int>::consumer_type consumer)
+                                               {
+                                                   auto state = std::make_pair(1, 1);
+                                                   while (state.first < 1000)
+                                                   {
+                                                       consumer(state.first);
+                                                       state = std::make_pair(state.second, state.first + state.second);
+                                                   }
+                                               } }
+    |= trx::transform(str) |= trx::take(7) |= trx::into(std::vector<std::string>{});
+    EXPECT_THAT(result, testing::ElementsAre("1", "1", "2", "3", "5", "8", "13"));
+}
