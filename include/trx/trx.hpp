@@ -680,9 +680,7 @@ struct intersperse_fn
     }
 };
 
-// REDUCERS
-
-struct ignore_reducer_t
+struct ignoring_reducer_t
 {
     template <class State, class... Args>
     bool operator()(State&, Args&&...) const
@@ -737,18 +735,6 @@ struct push_back_reducer_t
 
 struct copy_to_fn
 {
-    template <class>
-    struct reducer_t
-    {
-        template <class State, class Arg>
-        bool operator()(State& state, Arg&& arg) const
-        {
-            *state = std::forward<Arg>(arg);
-            ++state;
-            return true;
-        }
-    };
-
     template <class Out>
     constexpr auto operator()(Out out) const -> reducer_proxy_t<Out, copy_to_reducer_t>
     {
@@ -880,7 +866,7 @@ static constexpr inline auto stride = detail::stride_fn{};
 static constexpr inline auto join = detail::join_fn{}();
 static constexpr inline auto intersperse = detail::intersperse_fn{};
 
-static constexpr inline auto dev_null = reducer_proxy_t{ 0, detail::ignore_reducer_t{} };
+static constexpr inline auto dev_null = reducer_proxy_t{ 0, detail::ignoring_reducer_t{} };
 
 static constexpr inline auto partition = detail::partition_fn{};
 static constexpr inline auto fork = detail::fork_fn{};
