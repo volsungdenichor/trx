@@ -151,6 +151,7 @@ auto result = trx::from(
         return idx % 2 == 0;  // keep items at even indices
     }) |= trx::into(std::vector<int>{}));
 // result: {10, 30, 50}
+```
 
 ### inspect
 Executes a function for side effects on each item without modifying the item passed to the next reducer.
