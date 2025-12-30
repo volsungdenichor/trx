@@ -102,10 +102,10 @@ struct function_ref<Ret(Args...)>
 };
 
 template <class... Args>
-struct generator_t : public std::function<void(function_ref<void(Args...)>)>
+struct generator_t : public std::function<void(function_ref<bool(Args...)>)>
 {
-    using consumer_type = function_ref<void(Args...)>;
-    using base_t = std::function<void(function_ref<void(Args...)>)>;
+    using consumer_type = function_ref<bool(Args...)>;
+    using base_t = std::function<void(function_ref<bool(Args...)>)>;
 
     using base_t::base_t;
 };

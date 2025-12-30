@@ -107,7 +107,10 @@ TEST(reducers, generator)
                                                    auto state = std::make_pair(1, 1);
                                                    while (state.first < 1000)
                                                    {
-                                                       consumer(state.first);
+                                                       if (!consumer(state.first))
+                                                       {
+                                                           break;
+                                                       }
                                                        state = std::make_pair(state.second, state.first + state.second);
                                                    }
                                                } }
