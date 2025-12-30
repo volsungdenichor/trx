@@ -118,7 +118,7 @@ auto result = trx::from(input, trx::transform([](int x) { return x * 2; }) |= tr
 // result: {2, 4, 6, 8, 10}
 ```
 
-## transform_indexed
+### transform_indexed
 Applies a function to each item along with its index and passes the result to the next reducer.
 
 ```cpp
