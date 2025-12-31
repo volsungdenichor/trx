@@ -123,18 +123,43 @@ TEST(reducers, sum)
 
 TEST(reducers, generator)
 {
-    const auto result = trx::generator_t<int>{ [](trx::generator_t<int>::consumer_type consumer)
-                                               {
-                                                   auto state = std::make_pair(1, 1);
-                                                   while (state.first < 1000)
-                                                   {
-                                                       if (!consumer(state.first))
-                                                       {
-                                                           break;
-                                                       }
-                                                       state = std::make_pair(state.second, state.first + state.second);
-                                                   }
-                                               } }
-    |= trx::transform(str) |= trx::take(7) |= trx::into(std::vector<std::string>{});
+    const auto result = trx::generator_t<int>(
+        [](trx::generator_t<int>::consumer_type yield)
+        {
+            auto state = std::make_pair(1, 1);
+            while (state.first < 1000)
+            {
+                if (!yield(state.first))
+                {
+                    break;
+                }
+                state = std::make_pair(state.second, state.first + state.second);
+            }
+        })
+        |= trx::transform(str)  //
+        |= trx::take(7)         //
+        |= trx::into(std::vector<std::string>{});
     EXPECT_THAT(result, testing::ElementsAre("1", "1", "2", "3", "5", "8", "13"));
+}
+
+TEST(reducers, ternary_generator)
+{
+    const auto result = trx::generator_t<int, int, int>(
+        [](trx::generator_t<int, int, int>::consumer_type yield)
+        {
+            for (int i = 0; i < 1000; ++i)
+            {
+                ASSERT_THAT(i, testing::Le(11));
+                if (!yield(i, i * i, i * i * i))
+                {
+                    break;
+                }
+            }
+        })
+        |= trx::transform([](int value, int square, int cube) { return str(value, "/", square, "/", cube); })  //
+        |= trx::take(10)                                                                                       //
+        |= trx::intersperse(std::string{ ", " })                                                               //
+        |= trx::join                                                                                           //
+        |= trx::into(std::string{});
+    EXPECT_THAT(result, "0/0/0, 1/1/1, 2/4/8, 3/9/27, 4/16/64, 5/25/125, 6/36/216, 7/49/343, 8/64/512, 9/81/729");
 }
