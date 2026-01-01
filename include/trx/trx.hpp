@@ -104,7 +104,7 @@ struct function_ref<Ret(Args...)>
 template <class... Args>
 struct generator_t : public std::function<void(function_ref<bool(Args...)>)>
 {
-    using consumer_type = function_ref<bool(Args...)>;
+    using yield_fn = function_ref<bool(Args...)>;
     using base_t = std::function<void(function_ref<bool(Args...)>)>;
 
     using base_t::base_t;
@@ -113,7 +113,7 @@ struct generator_t : public std::function<void(function_ref<bool(Args...)>)>
 template <class... Args, class State, class Reducer>
 constexpr State operator|=(generator_t<Args...> generator, reducer_proxy_t<State, Reducer> reducer)
 {
-    generator(typename generator_t<Args...>::consumer_type{ reducer });
+    generator(typename generator_t<Args...>::yield_fn{ reducer });
     return reducer.state;
 }
 
@@ -259,29 +259,78 @@ struct reduce_fn
 
 constexpr inline auto reduce = reduce_fn{};
 
+template <class Range>
+using range_value_t = typename std::decay_t<Range>::value_type;
+
 struct from_fn
 {
-    template <class Range_0, class State, class Reducer>
-    constexpr auto operator()(Range_0&& range_0, reducer_proxy_t<State, Reducer> reducer) const -> State
+    template <class Range_0>
+    constexpr auto operator()(Range_0&& range_0) const -> generator_t<range_value_t<Range_0>>
     {
-        return reduce(std::move(reducer), std::forward<Range_0>(range_0));
+        using generator_type = generator_t<range_value_t<Range_0>>;
+        using yield_fn = typename generator_type::yield_fn;
+        return generator_type(
+            [&](yield_fn yield)
+            {
+                auto it_0 = std::begin(range_0);
+                const auto end_0 = std::end(range_0);
+                for (; it_0 != end_0; ++it_0)
+                {
+                    if (!yield(*it_0))
+                    {
+                        break;
+                    }
+                }
+            });
     }
 
-    template <class Range_0, class Range_1, class State, class Reducer>
-    constexpr auto operator()(Range_0&& range_0, Range_1&& range_1, reducer_proxy_t<State, Reducer> reducer) const -> State
+    template <class Range_0, class Range_1>
+    constexpr auto operator()(Range_0&& range_0, Range_1&& range_1) const
+        -> generator_t<range_value_t<Range_0>, range_value_t<Range_1>>
     {
-        return reduce(std::move(reducer), std::forward<Range_0>(range_0), std::forward<Range_1>(range_1));
+        using generator_type = generator_t<range_value_t<Range_0>, range_value_t<Range_1>>;
+        using yield_fn = typename generator_type::yield_fn;
+        return generator_type(
+            [&](yield_fn yield)
+            {
+                auto it_0 = std::begin(range_0);
+                auto it_1 = std::begin(range_1);
+                const auto end_0 = std::end(range_0);
+                const auto end_1 = std::end(range_1);
+                for (; it_0 != end_0 && it_1 != end_1; ++it_0, ++it_1)
+                {
+                    if (!yield(*it_0, *it_1))
+                    {
+                        break;
+                    }
+                }
+            });
     }
 
-    template <class Range_0, class Range_1, class Range_2, class State, class Reducer>
-    constexpr auto operator()(
-        Range_0&& range_0, Range_1&& range_1, Range_2&& range_2, reducer_proxy_t<State, Reducer> reducer) const -> State
+    template <class Range_0, class Range_1, class Range_2>
+    constexpr auto operator()(Range_0&& range_0, Range_1&& range_1, Range_2&& range_2) const
+        -> generator_t<range_value_t<Range_0>, range_value_t<Range_1>, range_value_t<Range_2>>
+
     {
-        return reduce(
-            std::move(reducer),
-            std::forward<Range_0>(range_0),
-            std::forward<Range_1>(range_1),
-            std::forward<Range_2>(range_2));
+        using generator_type = generator_t<range_value_t<Range_0>, range_value_t<Range_1>, range_value_t<Range_2>>;
+        using yield_fn = typename generator_type::yield_fn;
+        return generator_type(
+            [&](yield_fn yield)
+            {
+                auto it_0 = std::begin(range_0);
+                auto it_1 = std::begin(range_1);
+                auto it_2 = std::begin(range_2);
+                const auto end_0 = std::end(range_0);
+                const auto end_1 = std::end(range_1);
+                const auto end_2 = std::end(range_2);
+                for (; it_0 != end_0 && it_1 != end_1 && it_2 != end_2; ++it_0, ++it_1, ++it_2)
+                {
+                    if (!yield(*it_0, *it_1, *it_2))
+                    {
+                        break;
+                    }
+                }
+            });
     }
 };
 
