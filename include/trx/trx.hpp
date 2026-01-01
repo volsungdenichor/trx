@@ -349,6 +349,35 @@ struct from_fn
     }
 };
 
+struct chain_fn
+{
+    template <class Range_0, class Range_1>
+    constexpr auto operator()(Range_0&& range_0, Range_1&& range_1) const
+        -> generator_t<std::common_type_t<range_value_t<Range_0>, range_value_t<Range_1>>>
+    {
+        using generator_type = generator_t<std::common_type_t<range_value_t<Range_0>, range_value_t<Range_1>>>;
+        using yield_fn = typename generator_type::yield_fn;
+        return generator_type(
+            [&](yield_fn yield)
+            {
+                for (auto&& item : range_0)
+                {
+                    if (!yield(item))
+                    {
+                        return;
+                    }
+                }
+                for (auto&& item : range_1)
+                {
+                    if (!yield(item))
+                    {
+                        return;
+                    }
+                }
+            });
+    }
+};
+
 template <template <class...> class R, class Arg>
 struct transducer_t
 {
@@ -1070,6 +1099,7 @@ struct sum_fn
 constexpr inline auto reduce = detail::reduce_fn{};
 constexpr inline auto out = detail::out_fn{};
 constexpr inline auto from = detail::from_fn{};
+constexpr inline auto chain = detail::chain_fn{};
 constexpr inline auto to_reducer = detail::to_reducer_fn{};
 
 static constexpr inline auto all_of = detail::all_of_fn{};

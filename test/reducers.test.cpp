@@ -189,3 +189,11 @@ TEST(reducers, pythagorean_triples)
         |= trx::into(std::string{});
     EXPECT_THAT(result, "(3, 4, 5), (5, 12, 13), (6, 8, 10), (8, 15, 17), (9, 12, 15), (12, 16, 20)");
 }
+
+TEST(reducers, chain)
+{
+    std::vector<int> input_a = { 1, 2, 3 };
+    std::vector<int> input_b = { 10, 20, 30 };
+    const auto result = trx::chain(input_a, input_b) |= trx::into(std::vector<int>{});
+    EXPECT_THAT(result, testing::ElementsAre(1, 2, 3, 10, 20, 30));
+}
