@@ -77,27 +77,20 @@ struct function_ref<Ret(Args...)>
     void* m_obj;
     func_type m_func;
 
+    constexpr function_ref() = delete;
+    constexpr function_ref(const function_ref&) = default;
+
     template <class Func>
     constexpr function_ref(Func&& func)
         : m_obj{ const_cast<void*>(reinterpret_cast<const void*>(std::addressof(func))) }
         , m_func{ [](void* obj, Args... args) -> return_type
-                  {
-                      if constexpr (std::is_void_v<return_type>)
-                      {
-                          std::invoke(*static_cast<std::add_pointer_t<Func>>(obj), std::forward<Args>(args)...);
-                      }
-                      else
-                      {
-                          return std::invoke(*static_cast<std::add_pointer_t<Func>>(obj), std::forward<Args>(args)...);
-                      }
-                  } }
+                  { return std::invoke(*static_cast<std::add_pointer_t<Func>>(obj), std::forward<Args>(args)...); } }
     {
     }
 
-    template <class... CallArgs>
-    constexpr return_type operator()(CallArgs&&... args) const
+    constexpr return_type operator()(Args... args) const
     {
-        return m_func(m_obj, std::forward<CallArgs>(args)...);
+        return m_func(m_obj, std::forward<Args>(args)...);
     }
 };
 
@@ -111,7 +104,14 @@ struct generator_t : public std::function<void(function_ref<bool(Args...)>)>
 };
 
 template <class... Args, class State, class Reducer>
-constexpr State operator|=(generator_t<Args...> generator, reducer_proxy_t<State, Reducer> reducer)
+constexpr State operator|=(const generator_t<Args...>& generator, reducer_proxy_t<State, Reducer> reducer)
+{
+    generator(typename generator_t<Args...>::yield_fn{ reducer });
+    return reducer.state;
+}
+
+template <class... Args, class State, class Reducer>
+constexpr State operator|=(generator_t<Args...>&& generator, reducer_proxy_t<State, Reducer> reducer)
 {
     generator(typename generator_t<Args...>::yield_fn{ reducer });
     return reducer.state;
