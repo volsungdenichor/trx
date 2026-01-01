@@ -65,6 +65,21 @@ constexpr auto operator|=(Transducer&& transducer, reducer_proxy_t<State, Reduce
     return { std::move(proxy.state), std::invoke(std::forward<Transducer>(transducer), std::move(proxy.reducer)) };
 }
 
+template <class Range, class State, class Reducer, class Iter = decltype(std::begin(std::declval<Range&>()))>
+constexpr auto operator|=(Range&& range, reducer_proxy_t<State, Reducer> proxy) -> State
+{
+    auto it = std::begin(range);
+    const auto end = std::end(range);
+    for (; it != end; ++it)
+    {
+        if (!proxy.reducer(proxy.state, *it))
+        {
+            break;
+        }
+    }
+    return proxy.state;
+}
+
 template <class Signature>
 struct function_ref;
 
