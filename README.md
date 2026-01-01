@@ -310,7 +310,7 @@ std::size_t result = input |= trx::count;
 ## Generators
 
 ### from
-Zips up to three ranges pushing the corresponding elements together
+Zips up to three ranges pushing the corresponding elements together. The number of pushed elements is equal to the length of the shortest range.
 
 ```cpp
 std::vector<int> input_a = {1, 2, 3, 4};
@@ -330,6 +330,19 @@ Changes the reducer into an output iterator:
 
 ```cpp
 std::vector<int> input = {1, 2, 3};
-std::vector<std::string> result = std::copy(input.begin(), input.end(), trx::out(trx::transfom([](int x) { return std::to_string(x); }) |= trx::into(std::vector<std::string>{}))).get();
+std::vector<std::string> result = std::copy(
+    input.begin(),
+    input.end(),
+    trx::out(trx::transfom([](int x) { return std::to_string(x); }) |= trx::into(std::vector<std::string>{}))).get();
 // result: "1", "2", "3"
+```
+
+### to_reducer
+
+Adapts a binary operator to match the reducer function syntax
+
+```cpp
+std::vector<int> input = { 5, 10, 15};
+int result = input |= trx::reducer_proxy{ 0, trx::to_reducer(std::plus<>{}) };
+// result: 30
 ```
