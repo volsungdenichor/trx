@@ -124,7 +124,7 @@ TEST(reducers, generator)
         [](trx::generator_t<int>::yield_fn yield)
         {
             auto state = std::make_pair(1, 1);
-            while (state.first < 1000)
+            while (true)
             {
                 if (!yield(state.first))
                 {
@@ -144,7 +144,7 @@ TEST(reducers, ternary_generator)
     const auto result = trx::generator_t<int, int, int>(
         [](trx::generator_t<int, int, int>::yield_fn yield)
         {
-            for (int i = 0; i < 1000; ++i)
+            for (int i = 0; i <= 1000; ++i)
             {
                 ASSERT_THAT(i, testing::Le(11));
                 if (!yield(i, i * i, i * i * i))
@@ -159,4 +159,33 @@ TEST(reducers, ternary_generator)
         |= trx::join                                                                                           //
         |= trx::into(std::string{});
     EXPECT_THAT(result, "0/0/0, 1/1/1, 2/4/8, 3/9/27, 4/16/64, 5/25/125, 6/36/216, 7/49/343, 8/64/512, 9/81/729");
+}
+
+TEST(reducers, pythagorean_triples)
+{
+    const auto result = trx::generator_t<int, int, int>(
+        [](trx::generator_t<int, int, int>::yield_fn yield)
+        {
+            for (int a = 1; a <= 20; ++a)
+            {
+                for (int b = a; b <= 20; ++b)
+                {
+                    for (int c = b; c <= 20; ++c)
+                    {
+                        if (a * a + b * b == c * c)
+                        {
+                            if (!yield(a, b, c))
+                            {
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        })
+        |= trx::transform([](int a, int b, int c) { return str("(", a, ", ", b, ", ", c, ")"); })  //
+        |= trx::intersperse(std::string{ ", " })                                                   //
+        |= trx::join                                                                               //
+        |= trx::into(std::string{});
+    EXPECT_THAT(result, "(3, 4, 5), (5, 12, 13), (6, 8, 10), (8, 15, 17), (9, 12, 15), (12, 16, 20)");
 }
