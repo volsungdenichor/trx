@@ -2,33 +2,6 @@
 
 ## transducers
 
-### all_of
-Tests whether all items satisfy a predicate condition.
-
-```cpp
-std::vector<int> input = {2, 4, 6, 8};
-bool result = trx::from(input) |= trx::all_of([](int x) { return x % 2 == 0; });
-// result: true (all are even)
-```
-
-### any_of
-Tests whether at least one item satisfies a predicate condition.
-
-```cpp
-std::vector<int> input = {1, 2, 3, 4, 5};
-bool result = trx::from(input) |= trx::any_of([](int x) { return x % 2 == 0; });
-// result: true (2 and 4 are even)
-```
-
-### none_of
-Tests whether no items satisfy a predicate condition.
-
-```cpp
-std::vector<int> input = {1, 3, 5, 7};
-bool result = trx::from(input) |= trx::none_of([](int x) { return x % 2 == 0; });
-// result: true (none are even)
-```
-
 ### transform
 Applies a function to each item and passes the result to the next reducer.
 
@@ -229,6 +202,33 @@ std::string result = trx::from(input)
     |= trx::intersperse(',')
     |= trx::into(std::string{});
 // result: "A,B,C,D"
+```
+
+### all_of
+Tests whether all items satisfy a predicate condition.
+
+```cpp
+std::vector<int> input = {2, 4, 6, 8};
+bool result = trx::from(input) |= trx::all_of([](int x) { return x % 2 == 0; });
+// result: true (all are even)
+```
+
+### any_of
+Tests whether at least one item satisfies a predicate condition.
+
+```cpp
+std::vector<int> input = {1, 2, 3, 4, 5};
+bool result = trx::from(input) |= trx::any_of([](int x) { return x % 2 == 0; });
+// result: true (2 and 4 are even)
+```
+
+### none_of
+Tests whether no items satisfy a predicate condition.
+
+```cpp
+std::vector<int> input = {1, 3, 5, 7};
+bool result = trx::from(input) |= trx::none_of([](int x) { return x % 2 == 0; });
+// result: true (none are even)
 ```
 
 ## reducers
