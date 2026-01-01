@@ -319,7 +319,7 @@ std::vector<std::string> result = trx::from(input_a, input_b)
     |= trx::filter([](int a, const std::string& b) { return a % 2 == 0; })
     |= trx::transform([](int a, const std::string& b) -> std::string { return b + ":" + std::to_string(a); })
     |= trx::into(std::vector<std::string>{});
-// result: "two:2", "four:4"
+// result: {"two:2", "four:4"}
 ```
 
 ## Other
@@ -334,7 +334,7 @@ std::vector<std::string> result = std::copy(
     input.begin(),
     input.end(),
     trx::out(trx::transfom([](int x) { return std::to_string(x); }) |= trx::into(std::vector<std::string>{}))).get();
-// result: "1", "2", "3"
+// result: {"1", "2", "3"}
 ```
 
 ### to_reducer
@@ -342,7 +342,7 @@ std::vector<std::string> result = std::copy(
 Adapts a binary operator to match the reducer function syntax
 
 ```cpp
-std::vector<int> input = { 5, 10, 15};
-int result = input |= trx::reducer_proxy{ 0, trx::to_reducer(std::plus<>{}) };
+std::vector<int> input = {5, 10, 15};
+int result = input |= trx::reducer_proxy_t{ 0, trx::to_reducer(std::plus<>{}) };
 // result: 30
 ```
