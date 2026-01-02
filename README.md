@@ -6,25 +6,23 @@
 generator |= transducer* |= reducer
 ```
 
-Single input range is trated as a generator:
+Single input range is treated as a generator:
 
 ```
 range |= transducer* |= reducer
 ```
 
 ### reducer
-Aggregated state and state mutating function. The signature of the function is:
-```
-(State&, Args&&...) -> bool
-```
+Aggregated `State` and state mutating function - the actual reducer. The signature of this function is `(State&, Args&&...) -> bool`
+
 ### transducer
 A function which transforms a reducer into another reducer. Chaining multiple transducers and a final reducer creates a single reducer.
 
 ### generator
-Function which produces values passed on to the reducer. Its implemented this way:
+Function which produces values passed on to the reducer. It's implemented by returning a callable object:
 ```
 auto generate() -> generator_t<Types...> {
-    return [](auto yield)
+    return [](typename generator_t<Types...>::yield_fn yield)
     {
         // ...
         if (!yield(args...))
@@ -33,8 +31,9 @@ auto generate() -> generator_t<Types...> {
         }
         // ...
     };
-};
+}
 ```
+calling the `yield` function on arguments will push them to the reducer.
 
 ## transducers
 
