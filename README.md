@@ -13,7 +13,7 @@ range |= transducer* |= reducer
 ```
 
 ### reducer
-Aggregated `State` and state mutating function - the actual reducer. The signature of this function is `(State&, Args&&...) -> bool`
+Aggregated `State` and state mutating function - the actual reducer with signature `(State&, Args&&...) -> bool`. Iteration is terminated, when the function returns `false`.
 
 ### transducer
 A function which transforms a reducer into another reducer. Chaining multiple transducers and a final reducer creates a single reducer.
