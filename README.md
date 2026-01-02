@@ -1,5 +1,41 @@
 # trx
 
+## usage
+
+```
+generator |= transducer* |= reducer
+```
+
+Single input range is trated as a generator:
+
+```
+range |= transducer* |= reducer
+```
+
+### reducer
+Aggregated state and state mutating function. The signature of the function is:
+```
+(State&, Args&&...) -> bool
+```
+### transducer
+A function which transforms a reducer into another reducer. Chaining multiple transducers and a final reducer creates a single reducer.
+
+### generator
+Function which produces values passed on to the reducer. Its implemented this way:
+```
+auto generate() -> generator_t<Types...> {
+    return [](auto yield)
+    {
+        // ...
+        if (!yield(args...))
+        {
+            return;
+        }
+        // ...
+    };
+};
+```
+
 ## transducers
 
 ### transform
@@ -333,7 +369,22 @@ std::vector<int> result = trx::chain(input_a, input_b)
 // result: {1, 2, 3, 10, 20, 30}
 ```
 
-## Other
+### custom generators
+```cpp
+std::vector<std::string> result = trx::generator_t<int, int>([](auto yield) {
+        for (int i = 0; i < 10; ++i>) {
+            if (!yield(i, i * i)) {
+                break;
+            }
+        }
+    })
+    |= trx::transform([](int v, int square) -> std::string { return std::to_string(v) + " " + std::to_string(square); })
+    |= trx::take(4)
+    |= trx::into(std::vector<std::string>{});
+// result: {"0 0", "1 1", "2 4", "3 9"}
+```
+
+## other functions
 
 ### out
 

@@ -17,6 +17,7 @@ include(GoogleTest)
 set(UNIT_TEST_FILES
   transducers.test.cpp
   reducers.test.cpp
+  samples.test.cpp
 )
 
 add_executable(${UNIT_TEST_BINARY}
