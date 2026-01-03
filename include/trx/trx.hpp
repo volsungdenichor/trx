@@ -1088,9 +1088,76 @@ struct fork_fn
 struct sum_fn
 {
     template <class T>
-    constexpr auto operator()(T value) const
+    constexpr auto operator()(T value) const -> reducer_proxy_t<T, to_reducer_fn::impl_t<std::plus<>>>
     {
         return reducer_proxy_t{ value, to_reducer_fn{}(std::plus<>{}) };
+    }
+};
+
+struct for_each_fn
+{
+    template <class Func>
+    struct reducer_t
+    {
+        Func m_func;
+
+        template <class... Args>
+        constexpr bool operator()(std::ptrdiff_t& state, Args&&... args) const
+        {
+            std::invoke(m_func, std::forward<Args>(args)...);
+            ++state;
+            return true;
+        }
+    };
+
+    template <class Func>
+    constexpr auto operator()(Func&& func) const -> reducer_proxy_t<std::ptrdiff_t, reducer_t<std::decay_t<Func>>>
+    {
+        return { 0, { std::forward<Func>(func) } };
+    }
+};
+
+struct for_each_indexed_fn
+{
+    template <class Func>
+    struct reducer_t
+    {
+        Func m_func;
+
+        template <class... Args>
+        constexpr bool operator()(std::ptrdiff_t& state, Args&&... args) const
+        {
+            std::invoke(m_func, state++, std::forward<Args>(args)...);
+            return true;
+        }
+    };
+
+    template <class Func>
+    constexpr auto operator()(Func&& func) const -> reducer_proxy_t<std::ptrdiff_t, reducer_t<std::decay_t<Func>>>
+    {
+        return { 0, { std::forward<Func>(func) } };
+    }
+};
+
+struct accumulate_fn
+{
+    template <class Func>
+    struct reducer_t
+    {
+        Func m_func;
+
+        template <class State, class... Args>
+        constexpr bool operator()(State& state, Args&&... args) const
+        {
+            state = std::invoke(m_func, std::move(state), std::forward<Args>(args)...);
+            return true;
+        }
+    };
+
+    template <class State, class Func>
+    constexpr auto operator()(State state, Func&& func) const -> reducer_proxy_t<State, reducer_t<std::decay_t<Func>>>
+    {
+        return { std::move(state), { std::forward<Func>(func) } };
     }
 };
 
@@ -1139,6 +1206,11 @@ static constexpr inline auto fork = detail::fork_fn{};
 static constexpr inline auto copy_to = detail::copy_to_fn{};
 static constexpr inline auto push_back = detail::push_back_fn{};
 static constexpr inline auto into = detail::into_fn{};
+
+static constexpr inline auto for_each = detail::for_each_fn{};
+static constexpr inline auto for_each_indexed = detail::for_each_indexed_fn{};
+
+static constexpr inline auto accumulate = detail::accumulate_fn{};
 
 static constexpr inline auto count = reducer_proxy_t{ std::size_t{ 0 },
                                                       [](std::size_t& state, auto&&...) -> bool

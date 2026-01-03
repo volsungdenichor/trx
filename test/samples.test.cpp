@@ -48,21 +48,25 @@ TEST(samples, filter_indexed)
 TEST(samples, inspect)
 {
     std::vector<int> input = { 1, 2, 3 };
-    std::vector<int> result = input                            //
-        |= trx::inspect([](int x) { std::cout << x << " "; })  //
+    std::stringstream ss;
+    std::vector<int> result = input                        //
+        |= trx::inspect([&ss](int x) { ss << x << " "; })  //
         |= trx::into(std::vector<int>{});
 
     EXPECT_THAT(result, testing::ElementsAre(1, 2, 3));
+    EXPECT_THAT(ss.str(), "1 2 3 ");
 }
 
 TEST(samples, inspect_indexed)
 {
     std::vector<int> input = { 1, 2, 3 };
-    std::vector<int> result = input                                                                              //
-        |= trx::inspect_indexed([](std::ptrdiff_t idx, int x) { std::cout << "[" << idx << "]=" << x << " "; })  //
+    std::stringstream ss;
+    std::vector<int> result = input                                                                          //
+        |= trx::inspect_indexed([&ss](std::ptrdiff_t idx, int x) { ss << "[" << idx << "]=" << x << " "; })  //
         |= trx::into(std::vector<int>{});
 
     EXPECT_THAT(result, testing::ElementsAre(1, 2, 3));
+    EXPECT_THAT(ss.str(), "[0]=1 [1]=2 [2]=3 ");
 }
 
 TEST(samples, transform_maybe)
@@ -349,4 +353,27 @@ TEST(samples, to_reducer)
     int result = input |= trx::reducer_proxy_t{ 0, trx::to_reducer(std::plus<>{}) };
 
     EXPECT_THAT(result, testing::Eq(30));
+}
+
+TEST(samples, for_each)
+{
+    std::vector<int> input = { 1, 2, 3, 4, 5 };
+    std::vector<int> result;
+    input |= trx::for_each([&result](int x) { result.push_back(x * 2); });
+    EXPECT_THAT(result, testing::ElementsAre(2, 4, 6, 8, 10));
+}
+
+TEST(samples, for_each_indexed)
+{
+    std::vector<int> input = { 1, 2, 3, 4, 5 };
+    std::vector<int> result;
+    input |= trx::for_each_indexed([&result](std::ptrdiff_t idx, int x) { result.push_back(x * 2 + 100 * idx); });
+    EXPECT_THAT(result, testing::ElementsAre(2, 104, 206, 308, 410));
+}
+
+TEST(samples, accumulate)
+{
+    std::vector<int> input = { 1, 2, 3, 4, 5 };
+    int result = input |= trx::accumulate(0, [](int state, int x) { return state + x * x; });
+    EXPECT_THAT(result, testing::Eq(55));
 }

@@ -197,3 +197,29 @@ TEST(reducers, chain)
     const auto result = trx::chain(input_a, input_b) |= trx::into(std::vector<int>{});
     EXPECT_THAT(result, testing::ElementsAre(1, 2, 3, 10, 20, 30));
 }
+
+TEST(reducers, for_each)
+{
+    std::vector<int> input = { 1, 2, 3, 4, 5 };
+    std::vector<int> result;
+    input |= trx::for_each([&result](int x) { result.push_back(x * 2); });
+
+    EXPECT_THAT(result, testing::ElementsAre(2, 4, 6, 8, 10));
+}
+
+TEST(reducers, for_each_indexed)
+{
+    std::vector<int> input = { 1, 2, 3, 4, 5 };
+    std::vector<int> result;
+    input |= trx::for_each_indexed([&result](std::ptrdiff_t idx, int x) { result.push_back(x * 2 + 100 * idx); });
+
+    EXPECT_THAT(result, testing::ElementsAre(2, 104, 206, 308, 410));
+}
+
+TEST(reducers, accumulate)
+{
+    std::vector<int> input = { 1, 2, 3, 4, 5 };
+    const auto result = input |= trx::accumulate(0, [](int state, int x) { return state + x * x; });
+
+    EXPECT_THAT(result, testing::Eq(55));
+}

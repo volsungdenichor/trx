@@ -342,6 +342,40 @@ std::size_t result = input |= trx::count;
 // result: 5
 ```
 
+### for_each
+Executes a function on each item, useful for performing side effects.
+
+```cpp
+std::vector<int> input = {1, 2, 3, 4, 5};
+std::vector<int> result;
+input |= trx::for_each([&result](int x) { result.push_back(x * 2); });
+// result: {2, 4, 6, 8, 10}
+```
+
+### for_each_indexed
+Executes a function on each item along with its index, useful for index-aware side effects.
+
+```cpp
+std::vector<int> input = {1, 2, 3, 4, 5};
+std::vector<int> result;
+input |= trx::for_each_indexed([&result](std::ptrdiff_t idx, int x) {
+    result.push_back(x * 2 + 100 * idx);
+});
+// result: {2, 104, 206, 308, 410}
+```
+
+### accumulate
+Reduces items to a single value by repeatedly applying a function to an accumulated state and each item.
+Compliant with std::accumulate but enables multiple input ranges.
+
+```cpp
+std::vector<int> input = {1, 2, 3, 4, 5};
+int result = input |= trx::accumulate(0, [](int state, int x) {
+    return state + x * x;
+});
+// result: 55 (1² + 2² + 3² + 4² + 5²)
+```
+
 ## Generators
 
 ### from
