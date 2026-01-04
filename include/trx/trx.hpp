@@ -793,6 +793,28 @@ struct transform_maybe_indexed_fn
     }
 };
 
+struct unpack_fn
+{
+    template <class Reducer>
+    struct reducer_t
+    {
+        Reducer m_next_reducer;
+
+        template <class State, class Arg>
+        constexpr bool operator()(State& state, Arg&& arg) const
+        {
+            return std::apply(
+                [&](auto&&... args) { return m_next_reducer(state, std::forward<decltype(args)>(args)...); },
+                std::forward<Arg>(arg));
+        }
+    };
+
+    constexpr auto operator()() const -> transducer_t<reducer_t, void>
+    {
+        return {};
+    }
+};
+
 struct take_while_fn
 {
     template <class Reducer, class Pred>
@@ -1299,6 +1321,8 @@ static constexpr inline auto inspect_indexed = detail::inspect_indexed_fn{};
 
 static constexpr inline auto transform_maybe = detail::transform_maybe_fn{};
 static constexpr inline auto transform_maybe_indexed = detail::transform_maybe_indexed_fn{};
+
+static constexpr inline auto unpack = detail::unpack_fn{}();
 
 static constexpr inline auto take_while = detail::take_while_fn{};
 static constexpr inline auto take_while_indexed = detail::take_while_indexed_fn{};

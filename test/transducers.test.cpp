@@ -348,3 +348,18 @@ TEST(transducers, read_lines)
         trx::read_lines(is) |= trx::into(std::vector<std::string>{}),
         testing::ElementsAre("First line", "Second line", "Third line", "Fourth line"));
 }
+
+TEST(transducers, unpack)
+{
+    const auto xform = trx::unpack |= trx::transform([](int x, int y) { return x + y; }) |= trx::into(std::vector<int>{});
+
+    EXPECT_THAT(
+        trx::reduce(
+            xform,
+            std::vector<std::pair<int, int>>{
+                { 1, 2 },
+                { 3, 4 },
+                { 5, 6 },
+            }),
+        testing::ElementsAre(3, 7, 11));
+}

@@ -266,6 +266,18 @@ bool result = input |= trx::none_of([](int x) { return x % 2 == 0; });
 // result: true (none are even)
 ```
 
+### unpack
+Unpacks tuple-like objects (tuples, pairs, arrays) and passes their elements as separate arguments to the next reducer. Uses `std::apply` internally to expand the tuple elements, allowing downstream transducers to work with individual components instead of the packed structure.
+
+```cpp
+std::vector<std::tuple<int, int, char>> input = {{1, 2, 'a'}, {2, 3, 'b'}};
+std::vector<std::string> result = input
+    |= trx::unpack
+    |= trx::transform([](int a, int b, char c) { return std::to_string(10 * a + b) + c;  })
+    |= trx::into(std::vector<std::string>{});
+// result: {"12a", "23b"};
+```
+
 ## reducers
 
 ### dev_null
