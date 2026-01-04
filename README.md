@@ -392,7 +392,7 @@ std::vector<std::string> result = trx::from(input_a, input_b)
 ```
 
 ### chain
-Joins two ranges producing a range containing elements of the first range followed by elements of the second range
+Joins two ranges producing a range containing elements of the first range followed by elements of the second range.
 
 ```cpp
 std::vector<int> input_a = {1, 2, 3};
@@ -400,6 +400,34 @@ std::vector<int> input_b = {10, 20, 30};
 std::vector<int> result = trx::chain(input_a, input_b)
     |= trx::into(std::vector<int>{});
 // result: {1, 2, 3, 10, 20, 30}
+```
+
+### range
+Generates integral numbers from range `[lower, upper)` or `[0, upper)`.
+
+```cpp
+std::vector<int> result = trx::range(2, 8) |= trx::into(std::vector<int>{});
+// result: {2, 3, 4, 5, 6, 7}
+
+std::vector<int> result = trx::range(5) |= trx::into(std::vector<int>{});
+// result: {0, 1, 2, 3, 4}
+```
+
+### iota
+Generates infinite number of values starting from `lower`.
+
+```cpp
+std::vector<int> result = trx::iota(0) |= trx::take(3) |= trx::into(std::vector<int>{});
+// result: {0, 1, 2}
+```
+
+### read_lines
+Reads lines from stream one by one. Handles both CRLF and LF line-breaks.
+
+```cpp
+std::istringstream is{ "One\nTwo\nThree" };
+std::vector<std::string> result = trx::read_lines(is) |= trx::into(std::vector<std::string>{}),
+// result: {"One", "Two", "Three"}
 ```
 
 ### custom generators

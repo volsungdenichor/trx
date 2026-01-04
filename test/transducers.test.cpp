@@ -327,3 +327,24 @@ TEST(transducers, working_with_visitor)
         |= trx::into(std::vector<int>{}),
         testing::ElementsAre(24, 28));
 }
+
+TEST(transducers, range)
+{
+    EXPECT_THAT(trx::range(5, 10) |= trx::into(std::vector<int>{}), testing::ElementsAre(5, 6, 7, 8, 9));
+    EXPECT_THAT(trx::range(3) |= trx::into(std::vector<int>{}), testing::ElementsAre(0, 1, 2));
+}
+
+TEST(transducers, iota)
+{
+    EXPECT_THAT(trx::iota() |= trx::take(5) |= trx::into(std::vector<int>{}), testing::ElementsAre(0, 1, 2, 3, 4));
+    EXPECT_THAT(trx::iota(5) |= trx::take(5) |= trx::into(std::vector<int>{}), testing::ElementsAre(5, 6, 7, 8, 9));
+}
+
+TEST(transducers, read_lines)
+{
+    std::istringstream is{ "First line\nSecond line\r\nThird line\nFourth line" };
+
+    EXPECT_THAT(
+        trx::read_lines(is) |= trx::into(std::vector<std::string>{}),
+        testing::ElementsAre("First line", "Second line", "Third line", "Fourth line"));
+}

@@ -6,6 +6,7 @@
 
 #include <bitset>
 #include <functional>
+#include <istream>
 #include <tuple>
 #include <type_traits>
 
@@ -370,6 +371,116 @@ struct chain_fn
                 for (auto&& item : range_1)
                 {
                     if (!yield(item))
+                    {
+                        return;
+                    }
+                }
+            });
+    }
+};
+
+struct range_fn
+{
+    template <class T>
+    constexpr auto operator()(T lower, T upper) const -> generator_t<T>
+    {
+        using generator_type = generator_t<T>;
+        using yield_fn = typename generator_type::yield_fn;
+        return generator_type(
+            [=](yield_fn yield)
+            {
+                for (T value = lower; value < upper; ++value)
+                {
+                    if (!yield(value))
+                    {
+                        return;
+                    }
+                }
+            });
+    }
+
+    template <class T>
+    constexpr auto operator()(T upper) const -> generator_t<T>
+    {
+        return (*this)(T{}, upper);
+    }
+};
+
+struct iota_fn
+{
+    template <class T = std::ptrdiff_t>
+    constexpr auto operator()(T lower = {}) const -> generator_t<T>
+    {
+        using generator_type = generator_t<T>;
+        using yield_fn = typename generator_type::yield_fn;
+        return generator_type(
+            [=](yield_fn yield)
+            {
+                T value = lower;
+                while (true)
+                {
+                    if (!yield(value))
+                    {
+                        return;
+                    }
+                    ++value;
+                }
+            });
+    }
+};
+
+struct read_lines_fn
+{
+    static std::istream& read_line(std::istream& in, std::string& line)
+    {
+        line.clear();
+        char ch;
+
+        while (true)
+        {
+            if (!in.get(ch))
+            {
+                if (!line.empty())
+                {
+                    in.clear(in.rdstate() & ~std::ios::failbit);
+                    in.setstate(std::ios::eofbit);
+                    return in;
+                }
+
+                in.setstate(std::ios::failbit);
+                return in;
+            }
+
+            if (ch == '\n')
+            {
+                return in;
+            }
+
+            if (ch == '\r')
+            {
+                if (in.peek() == '\n')
+                {
+                    in.get();
+                }
+
+                return in;
+            }
+
+            line.push_back(ch);
+        }
+    }
+
+    auto operator()(std::istream& is) const -> generator_t<std::string>
+    {
+        using generator_type = generator_t<std::string>;
+        using yield_fn = typename generator_type::yield_fn;
+        return generator_type(
+            [&](yield_fn yield)
+            {
+                std::string line;
+                while (read_line(is, line))
+                {
+                    if (!yield(line))
                     {
                         return;
                     }
@@ -1167,6 +1278,10 @@ constexpr inline auto reduce = detail::reduce_fn{};
 constexpr inline auto out = detail::out_fn{};
 constexpr inline auto from = detail::from_fn{};
 constexpr inline auto chain = detail::chain_fn{};
+constexpr inline auto range = detail::range_fn{};
+constexpr inline auto iota = detail::iota_fn{};
+constexpr inline auto read_lines = detail::read_lines_fn{};
+
 constexpr inline auto to_reducer = detail::to_reducer_fn{};
 
 static constexpr inline auto all_of = detail::all_of_fn{};
