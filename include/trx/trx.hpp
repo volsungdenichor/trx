@@ -111,25 +111,22 @@ struct function_ref<Ret(Args...)>
 };
 
 template <class... Args>
-struct generator_t : public std::function<void(function_ref<bool(Args...)>)>
-{
-    using yield_fn = function_ref<bool(Args...)>;
-    using base_t = std::function<void(function_ref<bool(Args...)>)>;
+using yield_fn = function_ref<bool(Args...)>;
 
-    using base_t::base_t;
-};
+template <class... Args>
+using generator_t = std::function<void(yield_fn<Args...>)>;
 
 template <class... Args, class State, class Reducer>
 constexpr State operator|=(const generator_t<Args...>& generator, reducer_proxy_t<State, Reducer> reducer)
 {
-    generator(typename generator_t<Args...>::yield_fn{ reducer });
+    generator(yield_fn<Args...>{ reducer });
     return reducer.state;
 }
 
 template <class... Args, class State, class Reducer>
 constexpr State operator|=(generator_t<Args...>&& generator, reducer_proxy_t<State, Reducer> reducer)
 {
-    generator(typename generator_t<Args...>::yield_fn{ reducer });
+    generator(yield_fn<Args...>{ reducer });
     return reducer.state;
 }
 
@@ -284,9 +281,8 @@ struct from_fn
     constexpr auto operator()(Range_0&& range_0) const -> generator_t<range_value_t<Range_0>>
     {
         using generator_type = generator_t<range_value_t<Range_0>>;
-        using yield_fn = typename generator_type::yield_fn;
         return generator_type(
-            [&](yield_fn yield)
+            [&](auto yield)
             {
                 auto it_0 = std::begin(range_0);
                 const auto end_0 = std::end(range_0);
@@ -305,9 +301,8 @@ struct from_fn
         -> generator_t<range_value_t<Range_0>, range_value_t<Range_1>>
     {
         using generator_type = generator_t<range_value_t<Range_0>, range_value_t<Range_1>>;
-        using yield_fn = typename generator_type::yield_fn;
         return generator_type(
-            [&](yield_fn yield)
+            [&](auto yield)
             {
                 auto it_0 = std::begin(range_0);
                 auto it_1 = std::begin(range_1);
@@ -329,9 +324,8 @@ struct from_fn
 
     {
         using generator_type = generator_t<range_value_t<Range_0>, range_value_t<Range_1>, range_value_t<Range_2>>;
-        using yield_fn = typename generator_type::yield_fn;
         return generator_type(
-            [&](yield_fn yield)
+            [&](auto yield)
             {
                 auto it_0 = std::begin(range_0);
                 auto it_1 = std::begin(range_1);
@@ -357,9 +351,8 @@ struct chain_fn
         -> generator_t<std::common_type_t<range_value_t<Range_0>, range_value_t<Range_1>>>
     {
         using generator_type = generator_t<std::common_type_t<range_value_t<Range_0>, range_value_t<Range_1>>>;
-        using yield_fn = typename generator_type::yield_fn;
         return generator_type(
-            [&](yield_fn yield)
+            [&](auto yield)
             {
                 for (auto&& item : range_0)
                 {
@@ -385,9 +378,8 @@ struct range_fn
     constexpr auto operator()(T lower, T upper) const -> generator_t<T>
     {
         using generator_type = generator_t<T>;
-        using yield_fn = typename generator_type::yield_fn;
         return generator_type(
-            [=](yield_fn yield)
+            [=](auto yield)
             {
                 for (T value = lower; value < upper; ++value)
                 {
@@ -412,9 +404,8 @@ struct iota_fn
     constexpr auto operator()(T lower = {}) const -> generator_t<T>
     {
         using generator_type = generator_t<T>;
-        using yield_fn = typename generator_type::yield_fn;
         return generator_type(
-            [=](yield_fn yield)
+            [=](auto yield)
             {
                 T value = lower;
                 while (true)
@@ -473,9 +464,8 @@ struct read_lines_fn
     auto operator()(std::istream& is) const -> generator_t<std::string>
     {
         using generator_type = generator_t<std::string>;
-        using yield_fn = typename generator_type::yield_fn;
         return generator_type(
-            [&](yield_fn yield)
+            [&](auto yield)
             {
                 std::string line;
                 while (read_line(is, line))

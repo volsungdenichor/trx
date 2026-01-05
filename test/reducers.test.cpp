@@ -121,7 +121,7 @@ TEST(reducers, sum)
 TEST(reducers, generator)
 {
     const auto result = trx::generator_t<int>(
-        [](trx::generator_t<int>::yield_fn yield)
+        [](auto yield)
         {
             auto state = std::make_pair(1, 1);
             while (true)
@@ -142,7 +142,7 @@ TEST(reducers, generator)
 TEST(reducers, ternary_generator)
 {
     const auto result = trx::generator_t<int, int, int>(
-        [](trx::generator_t<int, int, int>::yield_fn yield)
+        [](auto yield)
         {
             for (int i = 0; i <= 1000; ++i)
             {
@@ -164,7 +164,7 @@ TEST(reducers, ternary_generator)
 TEST(reducers, pythagorean_triples)
 {
     const auto result = trx::generator_t<int, int, int>(
-        [](trx::generator_t<int, int, int>::yield_fn yield)
+        [](auto yield)
         {
             for (int a = 1; a <= 20; ++a)
             {

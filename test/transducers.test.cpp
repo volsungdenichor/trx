@@ -309,7 +309,7 @@ TEST(transducers, join_take_with_early_termination)
 
 auto sample() -> trx::generator_t<int>
 {
-    return trx::generator_t<int>{ [](trx::generator_t<int>::yield_fn yield)
+    return trx::generator_t<int>{ [](auto yield)
                                   {
                                       yield(10);
                                       yield(12);
