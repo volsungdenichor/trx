@@ -119,14 +119,14 @@ using generator_t = std::function<void(yield_fn<Args...>)>;
 template <class... Args, class State, class Reducer>
 constexpr State operator|=(const generator_t<Args...>& generator, reducer_proxy_t<State, Reducer> reducer)
 {
-    generator(yield_fn<Args...>{ reducer });
+    generator(reducer);
     return reducer.state;
 }
 
 template <class... Args, class State, class Reducer>
 constexpr State operator|=(generator_t<Args...>&& generator, reducer_proxy_t<State, Reducer> reducer)
 {
-    generator(yield_fn<Args...>{ reducer });
+    generator(reducer);
     return reducer.state;
 }
 
