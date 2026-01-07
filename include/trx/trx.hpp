@@ -208,7 +208,7 @@ struct output_iterator_t
 
     constexpr auto get() && -> state_type&&
     {
-        return std::move(m_reductors.state);
+        return std::move(m_reductor.state);
     }
 };
 
