@@ -378,7 +378,7 @@ input |= trx::for_each_indexed([&result](std::ptrdiff_t idx, int x) {
 
 ### accumulate
 Reduces items to a single value by repeatedly applying a function to an accumulated state and each item.
-Compliant with std::accumulate but enables multiple input ranges.
+Compliant with `std::accumulate` but enables multiple input ranges.
 
 ```cpp
 std::vector<int> input = {1, 2, 3, 4, 5};
