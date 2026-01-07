@@ -39,11 +39,8 @@ constexpr inline struct lowercase_fn
 
 TEST(transducers, basic_usage)
 {
-    const auto result
-        = trx::reduce(trx::reducer_proxy_t{ 0, trx::to_reducer(std::plus<>{}) }, std::vector<int>{ 1, 2, 3, 4, 5 });
-
-    EXPECT_THAT(result, 15);
-    EXPECT_THAT((std::vector<int>{ 5, 10, 15 } |= trx::reducer_proxy_t{ 0, trx::to_reducer(std::plus<>{}) }), 30);
+    EXPECT_THAT((trx::reduce(trx::make_reductor(0, trx::to_reducer(std::plus<>{})), std::vector<int>{ 1, 2, 3, 4, 5 })), 15);
+    EXPECT_THAT((std::vector<int>{ 5, 10, 15 } |= trx::make_reductor(0, trx::to_reducer(std::plus<>{}))), 30);
 }
 
 TEST(transducers, any_of)

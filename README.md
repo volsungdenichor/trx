@@ -3,23 +3,23 @@
 ## usage
 
 ```
-generator |= transducer* |= reducer
+generator |= transducer* |= reductor
 ```
 
 Single input range is treated as a generator:
 
 ```
-range |= transducer* |= reducer
+range |= transducer* |= reductor
 ```
 
-### reducer
+### reductor
 Aggregated `State` and state mutating function - the actual reducer with signature `(State&, Args&&...) -> bool`. Iteration is terminated, when the function returns `false`.
 
 ### transducer
-A function which transforms a reducer into another reducer. Chaining multiple transducers and a final reducer creates a single reducer.
+A function which transforms a reductor into another reductor. Chaining multiple transducers and a final reductor creates a single reductor.
 
 ### generator
-Function which produces values passed on to the reducer. It's implemented by returning a callable object:
+Function which produces values passed on to the reductor. It's implemented by returning a callable object:
 ```
 auto generate() -> generator_t<Types...> {
     return [](typename generator_t<Types...>::yield_fn yield)
@@ -33,12 +33,12 @@ auto generate() -> generator_t<Types...> {
     };
 }
 ```
-calling the `yield` function on arguments will push them to the reducer.
+calling the `yield` function on arguments will push them to the reductor.
 
 ## transducers
 
 ### transform
-Applies a function to each item and passes the result to the next reducer.
+Applies a function to each item and passes the result to the next reductor.
 
 ```cpp
 std::vector<int> input = {1, 2, 3, 4, 5};
@@ -278,7 +278,7 @@ std::vector<std::string> result = input
 // result: {"12a", "23b"};
 ```
 
-## reducers
+## reductors
 
 ### dev_null
 A reducer that discards all items, useful for situations where you want to run transducers for side effects only.
@@ -290,7 +290,7 @@ input |= trx::inspect([](int x) { std::cout << x << " "; }) |= trx::dev_null;
 ```
 
 ### partition
-Distributes items into two separate reducers based on a predicate condition, creating a pair of results.
+Distributes items into two separate reductors based on a predicate condition, creating a pair of results.
 
 ```cpp
 std::vector<int> input = {1, 2, 3, 4, 5};
@@ -304,7 +304,7 @@ auto [first, second] = input
 ```
 
 ### fork
-Sends the same item to multiple reducers simultaneously, collecting results into a tuple.
+Sends the same item to multiple reductors simultaneously, collecting results into a tuple.
 
 ```cpp
 std::vector<int> input = {1, 2, 3, 4, 5};
@@ -337,7 +337,7 @@ input |= trx::push_back(result);
 ```
 
 ### into
-Creates a reducer that builds a container by appending items to it using push_back semantics.
+Creates a reductor that builds a container by appending items to it using `push_back` semantics.
 
 ```cpp
 std::vector<int> input = {1, 2, 3, 4, 5};
@@ -478,6 +478,6 @@ Adapts a binary operator to match the reducer function syntax
 
 ```cpp
 std::vector<int> input = {5, 10, 15};
-int result = input |= trx::reducer_proxy_t{ 0, trx::to_reducer(std::plus<>{}) };
+int result = input |= trx::make_reductor(0, trx::to_reducer(std::plus<>{}));
 // result: 30
 ```

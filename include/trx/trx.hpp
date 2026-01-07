@@ -14,7 +14,7 @@ namespace TRX_NAMESPACE
 {
 
 template <class State, class Reducer>
-struct reducer_proxy_t
+struct reductor_t
 {
     using state_type = State;
     using reducer_type = Reducer;
@@ -28,57 +28,63 @@ struct reducer_proxy_t
     }
 
     template <class... Args>
-    bool operator()(Args&&... args)
+    constexpr auto operator()(Args&&... args) -> bool
     {
         return std::invoke(reducer, state, std::forward<Args>(args)...);
     }
 
-    constexpr const state_type& get() const&
+    constexpr auto get() const& -> const state_type&
     {
         return state;
     }
 
-    constexpr state_type& get() &
+    constexpr auto get() & -> state_type&
     {
         return state;
     }
 
-    constexpr state_type&& get() &&
+    constexpr auto get() && -> state_type&&
     {
         return std::move(state);
     }
 };
 
 template <class State, class Reducer>
-reducer_proxy_t(State&&, Reducer&&) -> reducer_proxy_t<std::decay_t<State>, std::decay_t<Reducer>>;
+reductor_t(State&&, Reducer&&) -> reductor_t<std::decay_t<State>, std::decay_t<Reducer>>;
 
-template <class Transducer, class State, class Reducer>
-constexpr auto operator|=(Transducer&& transducer, const reducer_proxy_t<State, Reducer>& proxy)
-    -> reducer_proxy_t<State, std::invoke_result_t<Transducer, Reducer>>
+template <class State, class Reducer>
+constexpr auto make_reductor(State&& state, Reducer&& reducer) -> reductor_t<std::decay_t<State>, std::decay_t<Reducer>>
 {
-    return { proxy.state, std::invoke(std::forward<Transducer>(transducer), proxy.reducer) };
+    return { std::forward<State>(state), std::forward<Reducer>(reducer) };
 }
 
 template <class Transducer, class State, class Reducer>
-constexpr auto operator|=(Transducer&& transducer, reducer_proxy_t<State, Reducer>&& proxy)
-    -> reducer_proxy_t<State, std::invoke_result_t<Transducer, Reducer>>
+constexpr auto operator|=(Transducer&& transducer, const reductor_t<State, Reducer>& reductor)
+    -> reductor_t<State, std::invoke_result_t<Transducer, Reducer>>
 {
-    return { std::move(proxy.state), std::invoke(std::forward<Transducer>(transducer), std::move(proxy.reducer)) };
+    return { reductor.state, std::invoke(std::forward<Transducer>(transducer), reductor.reducer) };
+}
+
+template <class Transducer, class State, class Reducer>
+constexpr auto operator|=(Transducer&& transducer, reductor_t<State, Reducer>&& reductor)
+    -> reductor_t<State, std::invoke_result_t<Transducer, Reducer>>
+{
+    return { std::move(reductor.state), std::invoke(std::forward<Transducer>(transducer), std::move(reductor.reducer)) };
 }
 
 template <class Range, class State, class Reducer, class Iter = decltype(std::begin(std::declval<Range&>()))>
-constexpr auto operator|=(Range&& range, reducer_proxy_t<State, Reducer> proxy) -> State
+constexpr auto operator|=(Range&& range, reductor_t<State, Reducer> reductor) -> State
 {
     auto it = std::begin(range);
     const auto end = std::end(range);
     for (; it != end; ++it)
     {
-        if (!proxy.reducer(proxy.state, *it))
+        if (!reductor(*it))
         {
             break;
         }
     }
-    return proxy.state;
+    return reductor.state;
 }
 
 template <class Signature>
@@ -104,7 +110,7 @@ struct function_ref<Ret(Args...)>
     {
     }
 
-    constexpr return_type operator()(Args... args) const
+    constexpr auto operator()(Args... args) const -> return_type
     {
         return m_func(m_obj, std::forward<Args>(args)...);
     }
@@ -117,14 +123,14 @@ template <class... Args>
 using generator_t = std::function<void(yield_fn<Args...>)>;
 
 template <class... Args, class State, class Reducer>
-constexpr State operator|=(const generator_t<Args...>& generator, reducer_proxy_t<State, Reducer> reducer)
+constexpr auto operator|=(const generator_t<Args...>& generator, reductor_t<State, Reducer> reducer) -> State
 {
     generator(reducer);
     return reducer.state;
 }
 
 template <class... Args, class State, class Reducer>
-constexpr State operator|=(generator_t<Args...>&& generator, reducer_proxy_t<State, Reducer> reducer)
+constexpr auto operator|=(generator_t<Args...>&& generator, reductor_t<State, Reducer> reducer) -> State
 {
     generator(reducer);
     return reducer.state;
@@ -136,12 +142,12 @@ namespace detail
 struct to_reducer_fn
 {
     template <class Reducer>
-    struct impl_t
+    struct adapter_t
     {
         Reducer m_reducer;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             state = std::invoke(m_reducer, std::move(state), std::forward<Args>(args)...);
             return true;
@@ -149,7 +155,7 @@ struct to_reducer_fn
     };
 
     template <class Reducer>
-    constexpr auto operator()(Reducer&& reducer) const -> impl_t<std::decay_t<Reducer>>
+    constexpr auto operator()(Reducer&& reducer) const -> adapter_t<std::decay_t<Reducer>>
     {
         return { std::forward<Reducer>(reducer) };
     }
@@ -166,74 +172,74 @@ struct output_iterator_t
     using state_type = State;
     using reducer_type = Reducer;
 
-    reducer_proxy_t<State, Reducer> m_reducer_proxy;
+    reductor_t<State, Reducer> m_reductor;
 
-    constexpr output_iterator_t& operator*()
+    constexpr auto operator*() -> output_iterator_t&
     {
         return *this;
     }
 
-    constexpr output_iterator_t& operator++()
+    constexpr auto operator++() -> output_iterator_t&
     {
         return *this;
     }
 
-    constexpr output_iterator_t& operator++(int)
+    constexpr auto operator++(int) -> output_iterator_t&
     {
         return *this;
     }
 
     template <class Arg>
-    constexpr output_iterator_t& operator=(Arg&& arg)
+    constexpr auto operator=(Arg&& arg) -> output_iterator_t&
     {
-        m_reducer_proxy(std::forward<Arg>(arg));
+        m_reductor(std::forward<Arg>(arg));
         return *this;
     }
 
-    constexpr const state_type& get() const&
+    constexpr auto get() const& -> const state_type&
     {
-        return m_reducer_proxy.state;
+        return m_reductor.state;
     }
 
-    constexpr state_type& get() &
+    constexpr auto get() & -> state_type&
     {
-        return m_reducer_proxy.state;
+        return m_reductor.state;
     }
 
-    constexpr state_type&& get() &&
+    constexpr auto get() && -> state_type&&
     {
-        return std::move(m_reducer_proxy.state);
+        return std::move(m_reductors.state);
     }
 };
 
 struct out_fn
 {
     template <class State, class Reducer>
-    constexpr auto operator()(reducer_proxy_t<State, Reducer> proxy) const -> output_iterator_t<State, Reducer>
+    constexpr auto operator()(reductor_t<State, Reducer> reductor) const -> output_iterator_t<State, Reducer>
     {
-        return { std::move(proxy) };
+        return { std::move(reductor) };
     }
 };
 
 struct reduce_fn
 {
     template <class State, class Reducer, class Range_0>
-    constexpr auto operator()(reducer_proxy_t<State, Reducer> proxy, Range_0&& range_0) const -> State
+    constexpr auto operator()(reductor_t<State, Reducer> reductor, Range_0&& range_0) const -> State
     {
         auto it_0 = std::begin(range_0);
         const auto end_0 = std::end(range_0);
         for (; it_0 != end_0; ++it_0)
         {
-            if (!proxy(*it_0))
+            if (!reductor(*it_0))
             {
                 break;
             }
         }
-        return proxy.state;
+        return reductor.state;
     }
 
     template <class State, class Reducer, class Range_0, class Range_1>
-    constexpr auto operator()(reducer_proxy_t<State, Reducer> proxy, Range_0&& range_0, Range_1&& range_1) const -> State
+    constexpr auto operator()(reductor_t<State, Reducer> reductor, Range_0&& range_0, Range_1&& range_1) const -> State
     {
         auto it_0 = std::begin(range_0);
         auto it_1 = std::begin(range_1);
@@ -241,17 +247,17 @@ struct reduce_fn
         const auto end_1 = std::end(range_1);
         for (; it_0 != end_0 && it_1 != end_1; ++it_0, ++it_1)
         {
-            if (!proxy(*it_0, *it_1))
+            if (!reductor(*it_0, *it_1))
             {
                 break;
             }
         }
-        return proxy.state;
+        return reductor.state;
     }
 
     template <class State, class Reducer, class Range_0, class Range_1, class Range_2>
     constexpr auto operator()(
-        reducer_proxy_t<State, Reducer> proxy, Range_0&& range_0, Range_1&& range_1, Range_2&& range_2) const -> State
+        reductor_t<State, Reducer> reductor, Range_0&& range_0, Range_1&& range_1, Range_2&& range_2) const -> State
     {
         auto it_0 = std::begin(range_0);
         auto it_1 = std::begin(range_1);
@@ -261,12 +267,12 @@ struct reduce_fn
         const auto end_2 = std::end(range_2);
         for (; it_0 != end_0 && it_1 != end_1 && it_2 != end_2; ++it_0, ++it_1, ++it_2)
         {
-            if (!proxy(*it_0, *it_1, *it_2))
+            if (!reductor(*it_0, *it_1, *it_2))
             {
                 break;
             }
         }
-        return proxy.state;
+        return reductor.state;
     }
 };
 
@@ -422,7 +428,7 @@ struct iota_fn
 
 struct read_lines_fn
 {
-    static std::istream& read_line(std::istream& in, std::string& line)
+    static auto read_line(std::istream& in, std::string& line) -> std::istream&
     {
         line.clear();
         char ch;
@@ -527,7 +533,7 @@ struct all_of_fn
         Pred m_pred;
 
         template <class... Args>
-        constexpr bool operator()(bool& state, Args&&... args) const
+        constexpr auto operator()(bool& state, Args&&... args) const -> bool
         {
             state = state && std::invoke(m_pred, std::forward<Args>(args)...);
             return state;
@@ -535,7 +541,7 @@ struct all_of_fn
     };
 
     template <class Pred>
-    constexpr auto operator()(Pred&& pred) const -> reducer_proxy_t<bool, reducer_t<std::decay_t<Pred>>>
+    constexpr auto operator()(Pred&& pred) const -> reductor_t<bool, reducer_t<std::decay_t<Pred>>>
     {
         return { true, reducer_t<std::decay_t<Pred>>{ std::forward<Pred>(pred) } };
     }
@@ -549,7 +555,7 @@ struct any_of_fn
         Pred m_pred;
 
         template <class... Args>
-        constexpr bool operator()(bool& state, Args&&... args) const
+        constexpr auto operator()(bool& state, Args&&... args) const -> bool
         {
             state = state || std::invoke(m_pred, std::forward<Args>(args)...);
             return !state;
@@ -557,7 +563,7 @@ struct any_of_fn
     };
 
     template <class Pred>
-    constexpr auto operator()(Pred&& pred) const -> reducer_proxy_t<bool, reducer_t<std::decay_t<Pred>>>
+    constexpr auto operator()(Pred&& pred) const -> reductor_t<bool, reducer_t<std::decay_t<Pred>>>
     {
         return { false, reducer_t<std::decay_t<Pred>>{ std::forward<Pred>(pred) } };
     }
@@ -571,7 +577,7 @@ struct none_of_fn
         Pred m_pred;
 
         template <class... Args>
-        constexpr bool operator()(bool& state, Args&&... args) const
+        constexpr auto operator()(bool& state, Args&&... args) const -> bool
         {
             state = state && !std::invoke(m_pred, std::forward<Args>(args)...);
             return state;
@@ -579,7 +585,7 @@ struct none_of_fn
     };
 
     template <class Pred>
-    constexpr auto operator()(Pred&& pred) const -> reducer_proxy_t<bool, reducer_t<std::decay_t<Pred>>>
+    constexpr auto operator()(Pred&& pred) const -> reductor_t<bool, reducer_t<std::decay_t<Pred>>>
     {
         return { true, reducer_t<std::decay_t<Pred>>{ std::forward<Pred>(pred) } };
     }
@@ -594,7 +600,7 @@ struct filter_fn
         Pred m_pred;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             if (std::invoke(m_pred, args...))
             {
@@ -621,7 +627,7 @@ struct filter_indexed_fn
         mutable std::ptrdiff_t m_index = 0;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             if (std::invoke(m_pred, m_index++, std::forward<Args>(args)...))
             {
@@ -647,7 +653,7 @@ struct transform_fn
         Func m_func;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             return m_next_reducer(state, std::invoke(m_func, std::forward<Args>(args)...));
         }
@@ -670,7 +676,7 @@ struct transform_indexed_fn
         mutable std::ptrdiff_t m_index = 0;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             return m_next_reducer(state, std::invoke(m_func, m_index++, std::forward<Args>(args)...));
         }
@@ -692,7 +698,7 @@ struct inspect_fn
         Func m_func;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             std::invoke(m_func, args...);
             return m_next_reducer(state, std::forward<Args>(args)...);
@@ -716,7 +722,7 @@ struct inspect_indexed_fn
         mutable std::ptrdiff_t m_index = 0;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             std::invoke(m_func, m_index++, args...);
             return m_next_reducer(state, std::forward<Args>(args)...);
@@ -739,7 +745,7 @@ struct transform_maybe_fn
         Func m_func;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             if (auto res = std::invoke(m_func, std::forward<Args>(args)...))
             {
@@ -766,7 +772,7 @@ struct transform_maybe_indexed_fn
         mutable std::ptrdiff_t m_index = 0;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             if (auto res = std::invoke(m_func, m_index++, std::forward<Args>(args)...))
             {
@@ -791,7 +797,7 @@ struct unpack_fn
         Reducer m_next_reducer;
 
         template <class State, class Arg>
-        constexpr bool operator()(State& state, Arg&& arg) const
+        constexpr auto operator()(State& state, Arg&& arg) const -> bool
         {
             return std::apply(
                 [&](auto&&... args) { return m_next_reducer(state, std::forward<decltype(args)>(args)...); },
@@ -816,7 +822,7 @@ struct take_while_fn
         mutable bool m_done = false;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             m_done |= !std::invoke(m_pred, args...);
             if (!m_done)
@@ -846,7 +852,7 @@ struct take_while_indexed_fn
         mutable std::ptrdiff_t m_index = 0;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             m_done |= !std::invoke(m_pred, m_index++, args...);
             if (!m_done)
@@ -875,7 +881,7 @@ struct drop_while_fn
         mutable bool m_done = false;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             m_done |= !std::invoke(m_pred, args...);
             if (m_done)
@@ -905,7 +911,7 @@ struct drop_while_indexed_fn
         mutable std::ptrdiff_t m_index = 0;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             m_done |= !std::invoke(m_pred, m_index++, args...);
             if (m_done)
@@ -932,7 +938,7 @@ struct take_fn
         mutable std::ptrdiff_t m_count;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             if (m_count-- > 0)
             {
@@ -957,7 +963,7 @@ struct drop_fn
         mutable std::ptrdiff_t m_count;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             if (m_count-- <= 0)
             {
@@ -983,7 +989,7 @@ struct stride_fn
         mutable std::ptrdiff_t m_index = 0;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             if (m_index++ % m_count == 0)
             {
@@ -1007,7 +1013,7 @@ struct join_fn
         Reducer m_next_reducer;
 
         template <class State, class Arg>
-        constexpr bool operator()(State& state, Arg&& arg) const
+        constexpr auto operator()(State& state, Arg&& arg) const -> bool
         {
             for (auto&& item : arg)
             {
@@ -1036,7 +1042,7 @@ struct intersperse_fn
         mutable bool m_first = true;
 
         template <class State, class Arg>
-        constexpr bool operator()(State& state, Arg&& arg) const
+        constexpr auto operator()(State& state, Arg&& arg) const -> bool
         {
             if (!m_first)
             {
@@ -1060,7 +1066,7 @@ struct intersperse_fn
 struct ignoring_reducer_t
 {
     template <class State, class... Args>
-    bool operator()(State&, Args&&...) const
+    constexpr auto operator()(State&, Args&&...) const -> bool
     {
         return true;
     }
@@ -1069,7 +1075,7 @@ struct ignoring_reducer_t
 struct copy_to_reducer_t
 {
     template <class State, class Arg>
-    bool operator()(State& state, Arg&& arg) const
+    constexpr auto operator()(State& state, Arg&& arg) const -> bool
     {
         *state = std::forward<Arg>(arg);
         ++state;
@@ -1080,19 +1086,19 @@ struct copy_to_reducer_t
 struct deref_fn
 {
     template <class T>
-    constexpr T& operator()(T& arg) const
+    constexpr auto operator()(T& arg) const -> T&
     {
         return arg;
     }
 
     template <class T>
-    constexpr T& operator()(T* arg) const
+    constexpr auto operator()(T* arg) const -> T&
     {
         return *arg;
     }
 
     template <class T>
-    constexpr T& operator()(std::reference_wrapper<T> arg) const
+    constexpr auto operator()(std::reference_wrapper<T> arg) const -> T&
     {
         return (*this)(arg.get());
     }
@@ -1103,7 +1109,7 @@ static constexpr inline auto deref = deref_fn{};
 struct push_back_reducer_t
 {
     template <class State, class Arg>
-    bool operator()(State& state, Arg&& arg) const
+    constexpr auto operator()(State& state, Arg&& arg) const -> bool
     {
         deref(state).push_back(std::forward<Arg>(arg));
         return true;
@@ -1113,7 +1119,7 @@ struct push_back_reducer_t
 struct copy_to_fn
 {
     template <class Out>
-    constexpr auto operator()(Out out) const -> reducer_proxy_t<Out, copy_to_reducer_t>
+    constexpr auto operator()(Out out) const -> reductor_t<Out, copy_to_reducer_t>
     {
         return { std::move(out), copy_to_reducer_t{} };
     }
@@ -1123,7 +1129,7 @@ struct push_back_fn
 {
     template <class Container>
     constexpr auto operator()(Container& container) const
-        -> reducer_proxy_t<std::reference_wrapper<Container>, push_back_reducer_t>
+        -> reductor_t<std::reference_wrapper<Container>, push_back_reducer_t>
     {
         return { container, push_back_reducer_t{} };
     }
@@ -1132,7 +1138,7 @@ struct push_back_fn
 struct into_fn
 {
     template <class Container>
-    constexpr auto operator()(Container&& container) const -> reducer_proxy_t<std::decay_t<Container>, push_back_reducer_t>
+    constexpr auto operator()(Container&& container) const -> reductor_t<std::decay_t<Container>, push_back_reducer_t>
     {
         return { std::forward<Container>(container), push_back_reducer_t{} };
     }
@@ -1148,7 +1154,7 @@ struct partition_fn
         mutable std::bitset<2> m_done{};
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             if (std::invoke(m_pred, args...))
             {
@@ -1163,8 +1169,8 @@ struct partition_fn
     };
 
     template <class Pred, class S0, class R0, class S1, class R1>
-    constexpr auto operator()(Pred&& pred, reducer_proxy_t<S0, R0> on_true_reducer, reducer_proxy_t<S1, R1> on_false_reducer)
-        const -> reducer_proxy_t<std::pair<S0, S1>, reducer_t<std::decay_t<Pred>, R0, R1>>
+    constexpr auto operator()(Pred&& pred, reductor_t<S0, R0> on_true_reducer, reductor_t<S1, R1> on_false_reducer) const
+        -> reductor_t<std::pair<S0, S1>, reducer_t<std::decay_t<Pred>, R0, R1>>
     {
         return { { std::move(on_true_reducer.state), std::move(on_false_reducer.state) },
                  { std::forward<Pred>(pred), { std::move(on_true_reducer.reducer), std::move(on_false_reducer.reducer) } } };
@@ -1190,7 +1196,7 @@ struct fork_fn
         }
 
         template <class State, class... Args>
-        bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             call<0>(state, args...);
             return !m_done.all();
@@ -1199,7 +1205,7 @@ struct fork_fn
 
     template <class... Reducers>
     constexpr auto operator()(Reducers... reducers) const
-        -> reducer_proxy_t<std::tuple<typename Reducers::state_type...>, reducer_t<typename Reducers::reducer_type...>>
+        -> reductor_t<std::tuple<typename Reducers::state_type...>, reducer_t<typename Reducers::reducer_type...>>
     {
         return { { std::move(reducers.state)... },
                  {
@@ -1211,9 +1217,9 @@ struct fork_fn
 struct sum_fn
 {
     template <class T>
-    constexpr auto operator()(T value) const -> reducer_proxy_t<T, to_reducer_fn::impl_t<std::plus<>>>
+    constexpr auto operator()(T value) const -> reductor_t<T, to_reducer_fn::adapter_t<std::plus<>>>
     {
-        return reducer_proxy_t{ value, to_reducer_fn{}(std::plus<>{}) };
+        return reductor_t{ value, to_reducer_fn{}(std::plus<>{}) };
     }
 };
 
@@ -1225,7 +1231,7 @@ struct for_each_fn
         Func m_func;
 
         template <class... Args>
-        constexpr bool operator()(std::ptrdiff_t& state, Args&&... args) const
+        constexpr auto operator()(std::ptrdiff_t& state, Args&&... args) const -> bool
         {
             std::invoke(m_func, std::forward<Args>(args)...);
             ++state;
@@ -1234,7 +1240,7 @@ struct for_each_fn
     };
 
     template <class Func>
-    constexpr auto operator()(Func&& func) const -> reducer_proxy_t<std::ptrdiff_t, reducer_t<std::decay_t<Func>>>
+    constexpr auto operator()(Func&& func) const -> reductor_t<std::ptrdiff_t, reducer_t<std::decay_t<Func>>>
     {
         return { 0, { std::forward<Func>(func) } };
     }
@@ -1248,7 +1254,7 @@ struct for_each_indexed_fn
         Func m_func;
 
         template <class... Args>
-        constexpr bool operator()(std::ptrdiff_t& state, Args&&... args) const
+        constexpr auto operator()(std::ptrdiff_t& state, Args&&... args) const -> bool
         {
             std::invoke(m_func, state++, std::forward<Args>(args)...);
             return true;
@@ -1256,7 +1262,7 @@ struct for_each_indexed_fn
     };
 
     template <class Func>
-    constexpr auto operator()(Func&& func) const -> reducer_proxy_t<std::ptrdiff_t, reducer_t<std::decay_t<Func>>>
+    constexpr auto operator()(Func&& func) const -> reductor_t<std::ptrdiff_t, reducer_t<std::decay_t<Func>>>
     {
         return { 0, { std::forward<Func>(func) } };
     }
@@ -1270,7 +1276,7 @@ struct accumulate_fn
         Func m_func;
 
         template <class State, class... Args>
-        constexpr bool operator()(State& state, Args&&... args) const
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             state = std::invoke(m_func, std::move(state), std::forward<Args>(args)...);
             return true;
@@ -1278,7 +1284,7 @@ struct accumulate_fn
     };
 
     template <class State, class Func>
-    constexpr auto operator()(State state, Func&& func) const -> reducer_proxy_t<State, reducer_t<std::decay_t<Func>>>
+    constexpr auto operator()(State state, Func&& func) const -> reductor_t<State, reducer_t<std::decay_t<Func>>>
     {
         return { std::move(state), { std::forward<Func>(func) } };
     }
@@ -1327,7 +1333,7 @@ static constexpr inline auto stride = detail::stride_fn{};
 static constexpr inline auto join = detail::join_fn{}();
 static constexpr inline auto intersperse = detail::intersperse_fn{};
 
-static constexpr inline auto dev_null = reducer_proxy_t{ 0, detail::ignoring_reducer_t{} };
+static constexpr inline auto dev_null = reductor_t{ 0, detail::ignoring_reducer_t{} };
 
 static constexpr inline auto partition = detail::partition_fn{};
 static constexpr inline auto fork = detail::fork_fn{};
@@ -1341,12 +1347,12 @@ static constexpr inline auto for_each_indexed = detail::for_each_indexed_fn{};
 
 static constexpr inline auto accumulate = detail::accumulate_fn{};
 
-static constexpr inline auto count = reducer_proxy_t{ std::size_t{ 0 },
-                                                      [](std::size_t& state, auto&&...) -> bool
-                                                      {
-                                                          state += 1;
-                                                          return true;
-                                                      } };
+static constexpr inline auto count = reductor_t{ std::size_t{ 0 },
+                                                 [](std::size_t& state, auto&&...) -> bool
+                                                 {
+                                                     state += 1;
+                                                     return true;
+                                                 } };
 
 static constexpr inline auto sum = detail::sum_fn{};
 

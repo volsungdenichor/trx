@@ -350,7 +350,7 @@ TEST(samples, out)
 TEST(samples, to_reducer)
 {
     std::vector<int> input = { 5, 10, 15 };
-    int result = input |= trx::reducer_proxy_t{ 0, trx::to_reducer(std::plus<>{}) };
+    int result = input |= trx::reductor_t{ 0, trx::to_reducer(std::plus<>{}) };
 
     EXPECT_THAT(result, testing::Eq(30));
 }
