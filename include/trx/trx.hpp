@@ -93,35 +93,94 @@ using yield_fn = function_ref<bool(Args...)>;
 template <class... Args>
 using generator_t = std::function<void(yield_fn<Args...>)>;
 
-template <class... Args, class State, class Reducer>
-constexpr auto operator|=(const generator_t<Args...>& generator, reductor_t<State, Reducer> reducer) -> State
+namespace detail
 {
-    generator(reducer);
-    return reducer.state;
+
+template <class T, class = void>
+struct is_generator_impl : std::false_type
+{
+};
+
+template <class... Args>
+struct is_generator_impl<generator_t<Args...>> : std::true_type
+{
+};
+
+template <class T>
+struct is_reductor_impl : std::false_type
+{
+};
+
+template <class S, class R>
+struct is_reductor_impl<reductor_t<S, R>> : std::true_type
+{
+};
+
+template <class T, class = void>
+struct is_range_impl : std::false_type
+{
+};
+
+template <class T>
+struct is_range_impl<T, std::void_t<decltype(std::begin(std::declval<T&>())), decltype(std::end(std::declval<T&>()))>>
+    : std::true_type
+{
+};
+
+template <class T>
+struct is_transducer_impl
+{
+    static constexpr bool value = !is_generator_impl<T>::value && !is_reductor_impl<T>::value && !is_range_impl<T>::value;
+};
+
+}  // namespace detail
+
+template <class T>
+inline constexpr bool is_generator_v = detail::is_generator_impl<T>::value;
+
+template <class T>
+inline constexpr bool is_transducer_v = detail::is_transducer_impl<T>::value;
+
+template <class T>
+inline constexpr bool is_range_v = detail::is_range_impl<T>::value;
+
+template <
+    class Generator,
+    class State,
+    class Reducer,
+    class G = std::decay_t<Generator>,
+    std::enable_if_t<is_generator_v<G>, int> = 0>
+constexpr auto operator|=(Generator&& generator, reductor_t<State, Reducer> reductor) -> State
+{
+    std::forward<Generator>(generator)(reductor);
+    return reductor.state;
 }
 
-template <class... Args, class State, class Reducer>
-constexpr auto operator|=(generator_t<Args...>&& generator, reductor_t<State, Reducer> reducer) -> State
-{
-    generator(reducer);
-    return reducer.state;
-}
-
-template <class Transducer, class State, class Reducer>
+template <
+    class Transducer,
+    class State,
+    class Reducer,
+    class T = std::decay_t<Transducer>,
+    std::enable_if_t<is_transducer_v<T>, int> = 0>
 constexpr auto operator|=(Transducer&& transducer, const reductor_t<State, Reducer>& reductor)
     -> reductor_t<State, std::invoke_result_t<Transducer, Reducer>>
 {
     return { reductor.state, std::invoke(std::forward<Transducer>(transducer), reductor.reducer) };
 }
 
-template <class Transducer, class State, class Reducer>
+template <
+    class Transducer,
+    class State,
+    class Reducer,
+    class T = std::decay_t<Transducer>,
+    std::enable_if_t<is_transducer_v<T>, int> = 0>
 constexpr auto operator|=(Transducer&& transducer, reductor_t<State, Reducer>&& reductor)
     -> reductor_t<State, std::invoke_result_t<Transducer, Reducer>>
 {
     return { std::move(reductor.state), std::invoke(std::forward<Transducer>(transducer), std::move(reductor.reducer)) };
 }
 
-template <class Range, class State, class Reducer, class Iter = decltype(std::begin(std::declval<Range&>()))>
+template <class Range, class State, class Reducer, class R = std::decay_t<Range>, std::enable_if_t<is_range_v<R>, int> = 0>
 constexpr auto operator|=(Range&& range, reductor_t<State, Reducer> reductor) -> State
 {
     auto it = std::begin(range);
