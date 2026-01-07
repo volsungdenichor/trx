@@ -58,35 +58,6 @@ constexpr auto make_reductor(State&& state, Reducer&& reducer) -> reductor_t<std
     return { std::forward<State>(state), std::forward<Reducer>(reducer) };
 }
 
-template <class Transducer, class State, class Reducer>
-constexpr auto operator|=(Transducer&& transducer, const reductor_t<State, Reducer>& reductor)
-    -> reductor_t<State, std::invoke_result_t<Transducer, Reducer>>
-{
-    return { reductor.state, std::invoke(std::forward<Transducer>(transducer), reductor.reducer) };
-}
-
-template <class Transducer, class State, class Reducer>
-constexpr auto operator|=(Transducer&& transducer, reductor_t<State, Reducer>&& reductor)
-    -> reductor_t<State, std::invoke_result_t<Transducer, Reducer>>
-{
-    return { std::move(reductor.state), std::invoke(std::forward<Transducer>(transducer), std::move(reductor.reducer)) };
-}
-
-template <class Range, class State, class Reducer, class Iter = decltype(std::begin(std::declval<Range&>()))>
-constexpr auto operator|=(Range&& range, reductor_t<State, Reducer> reductor) -> State
-{
-    auto it = std::begin(range);
-    const auto end = std::end(range);
-    for (; it != end; ++it)
-    {
-        if (!reductor(*it))
-        {
-            break;
-        }
-    }
-    return reductor.state;
-}
-
 template <class Signature>
 struct function_ref;
 
@@ -134,6 +105,35 @@ constexpr auto operator|=(generator_t<Args...>&& generator, reductor_t<State, Re
 {
     generator(reducer);
     return reducer.state;
+}
+
+template <class Transducer, class State, class Reducer>
+constexpr auto operator|=(Transducer&& transducer, const reductor_t<State, Reducer>& reductor)
+    -> reductor_t<State, std::invoke_result_t<Transducer, Reducer>>
+{
+    return { reductor.state, std::invoke(std::forward<Transducer>(transducer), reductor.reducer) };
+}
+
+template <class Transducer, class State, class Reducer>
+constexpr auto operator|=(Transducer&& transducer, reductor_t<State, Reducer>&& reductor)
+    -> reductor_t<State, std::invoke_result_t<Transducer, Reducer>>
+{
+    return { std::move(reductor.state), std::invoke(std::forward<Transducer>(transducer), std::move(reductor.reducer)) };
+}
+
+template <class Range, class State, class Reducer, class Iter = decltype(std::begin(std::declval<Range&>()))>
+constexpr auto operator|=(Range&& range, reductor_t<State, Reducer> reductor) -> State
+{
+    auto it = std::begin(range);
+    const auto end = std::end(range);
+    for (; it != end; ++it)
+    {
+        if (!reductor(*it))
+        {
+            break;
+        }
+    }
+    return reductor.state;
 }
 
 namespace detail

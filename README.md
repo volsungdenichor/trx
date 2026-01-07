@@ -239,6 +239,29 @@ std::string result = input
 // result: "A,B,C,D"
 ```
 
+### unpack
+Unpacks tuple-like objects (tuples, pairs, arrays) and passes their elements as separate arguments to the next reducer. Uses `std::apply` internally to expand the tuple elements, allowing downstream transducers to work with individual components instead of the packed structure.
+
+```cpp
+std::vector<std::tuple<int, int, char>> input = {{1, 2, 'a'}, {2, 3, 'b'}};
+std::vector<std::string> result = input
+    |= trx::unpack
+    |= trx::transform([](int a, int b, char c) { return std::to_string(10 * a + b) + c;  })
+    |= trx::into(std::vector<std::string>{});
+// result: {"12a", "23b"};
+```
+
+## reductors
+
+### dev_null
+A reducer that discards all items, useful for situations where you want to run transducers for side effects only.
+
+```cpp
+std::vector<int> input = {1, 2, 3, 4, 5};
+input |= trx::inspect([](int x) { std::cout << x << " "; }) |= trx::dev_null;
+// Prints: 1 2 3 4 5
+```
+
 ### all_of
 Tests whether all items satisfy a predicate condition.
 
@@ -264,29 +287,6 @@ Tests whether no items satisfy a predicate condition.
 std::vector<int> input = {1, 3, 5, 7};
 bool result = input |= trx::none_of([](int x) { return x % 2 == 0; });
 // result: true (none are even)
-```
-
-### unpack
-Unpacks tuple-like objects (tuples, pairs, arrays) and passes their elements as separate arguments to the next reducer. Uses `std::apply` internally to expand the tuple elements, allowing downstream transducers to work with individual components instead of the packed structure.
-
-```cpp
-std::vector<std::tuple<int, int, char>> input = {{1, 2, 'a'}, {2, 3, 'b'}};
-std::vector<std::string> result = input
-    |= trx::unpack
-    |= trx::transform([](int a, int b, char c) { return std::to_string(10 * a + b) + c;  })
-    |= trx::into(std::vector<std::string>{});
-// result: {"12a", "23b"};
-```
-
-## reductors
-
-### dev_null
-A reducer that discards all items, useful for situations where you want to run transducers for side effects only.
-
-```cpp
-std::vector<int> input = {1, 2, 3, 4, 5};
-input |= trx::inspect([](int x) { std::cout << x << " "; }) |= trx::dev_null;
-// Prints: 1 2 3 4 5
 ```
 
 ### partition
