@@ -209,31 +209,31 @@ struct output_iterator_t
 struct out_fn
 {
     template <class State, class Reducer>
-    constexpr auto operator()(reducer_proxy_t<State, Reducer> reducer) const -> output_iterator_t<State, Reducer>
+    constexpr auto operator()(reducer_proxy_t<State, Reducer> proxy) const -> output_iterator_t<State, Reducer>
     {
-        return { std::move(reducer) };
+        return { std::move(proxy) };
     }
 };
 
 struct reduce_fn
 {
     template <class State, class Reducer, class Range_0>
-    constexpr auto operator()(reducer_proxy_t<State, Reducer> reducer, Range_0&& range_0) const -> State
+    constexpr auto operator()(reducer_proxy_t<State, Reducer> proxy, Range_0&& range_0) const -> State
     {
         auto it_0 = std::begin(range_0);
         const auto end_0 = std::end(range_0);
         for (; it_0 != end_0; ++it_0)
         {
-            if (!reducer.reducer(reducer.state, *it_0))
+            if (!proxy(*it_0))
             {
                 break;
             }
         }
-        return reducer.state;
+        return proxy.state;
     }
 
     template <class State, class Reducer, class Range_0, class Range_1>
-    constexpr auto operator()(reducer_proxy_t<State, Reducer> reducer, Range_0&& range_0, Range_1&& range_1) const -> State
+    constexpr auto operator()(reducer_proxy_t<State, Reducer> proxy, Range_0&& range_0, Range_1&& range_1) const -> State
     {
         auto it_0 = std::begin(range_0);
         auto it_1 = std::begin(range_1);
@@ -241,17 +241,17 @@ struct reduce_fn
         const auto end_1 = std::end(range_1);
         for (; it_0 != end_0 && it_1 != end_1; ++it_0, ++it_1)
         {
-            if (!reducer.reducer(reducer.state, *it_0, *it_1))
+            if (!proxy(*it_0, *it_1))
             {
                 break;
             }
         }
-        return reducer.state;
+        return proxy.state;
     }
 
     template <class State, class Reducer, class Range_0, class Range_1, class Range_2>
     constexpr auto operator()(
-        reducer_proxy_t<State, Reducer> reducer, Range_0&& range_0, Range_1&& range_1, Range_2&& range_2) const -> State
+        reducer_proxy_t<State, Reducer> proxy, Range_0&& range_0, Range_1&& range_1, Range_2&& range_2) const -> State
     {
         auto it_0 = std::begin(range_0);
         auto it_1 = std::begin(range_1);
@@ -261,12 +261,12 @@ struct reduce_fn
         const auto end_2 = std::end(range_2);
         for (; it_0 != end_0 && it_1 != end_1 && it_2 != end_2; ++it_0, ++it_1, ++it_2)
         {
-            if (!reducer.reducer(reducer.state, *it_0, *it_1, *it_2))
+            if (!proxy(*it_0, *it_1, *it_2))
             {
                 break;
             }
         }
-        return reducer.state;
+        return proxy.state;
     }
 };
 
