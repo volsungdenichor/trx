@@ -96,13 +96,17 @@ using generator_t = std::function<void(yield_fn<Args...>)>;
 namespace detail
 {
 
+template <class Callable>
+using return_type_t = typename decltype(std::function{ std::declval<Callable>() })::result_type;
+
 template <class T, class = void>
 struct is_generator_impl : std::false_type
 {
 };
 
-template <class... Args>
-struct is_generator_impl<generator_t<Args...>> : std::true_type
+template <class YieldFn>
+struct is_generator_impl<std::function<void(YieldFn)>, std::enable_if_t<std::is_convertible_v<return_type_t<YieldFn>, bool>>>
+    : std::true_type
 {
 };
 
