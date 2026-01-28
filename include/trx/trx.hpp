@@ -874,6 +874,30 @@ struct unpack_fn
     }
 };
 
+struct select_fn
+{
+    template <class Reducer, class Funcs>
+    struct reducer_t
+    {
+        Reducer m_next_reducer;
+        Funcs m_funcs;
+
+        template <class State, class Arg>
+        constexpr auto operator()(State& state, Arg&& arg) const -> bool
+        {
+            return std::apply(
+                [&](auto&&... funcs) { return m_next_reducer(state, std::invoke(funcs, std::forward<Arg>(arg))...); },
+                m_funcs);
+        }
+    };
+
+    template <class... Funcs>
+    constexpr auto operator()(Funcs&&... funcs) const -> transducer_t<reducer_t, std::tuple<std::decay_t<Funcs>...>>
+    {
+        return { std::make_tuple(std::forward<Funcs>(funcs)...) };
+    }
+};
+
 struct take_while_fn
 {
     template <class Reducer, class Pred>
@@ -1382,6 +1406,7 @@ static constexpr inline auto transform_maybe = detail::transform_maybe_fn{};
 static constexpr inline auto transform_maybe_indexed = detail::transform_maybe_indexed_fn{};
 
 static constexpr inline auto unpack = detail::unpack_fn{}();
+static constexpr inline auto select = detail::select_fn{};
 
 static constexpr inline auto take_while = detail::take_while_fn{};
 static constexpr inline auto take_while_indexed = detail::take_while_indexed_fn{};

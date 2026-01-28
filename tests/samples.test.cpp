@@ -377,3 +377,34 @@ TEST(samples, accumulate)
     int result = input |= trx::accumulate(0, [](int state, int x) { return state + x * x; });
     EXPECT_THAT(result, testing::Eq(55));
 }
+
+TEST(samples, unpack)
+{
+    std::vector<std::tuple<int, int, char>> input = { { 1, 2, 'a' }, { 2, 3, 'b' } };
+    std::vector<std::string> result = input |= trx::unpack
+        |= trx::transform([](int a, int b, char c) { return std::to_string(10 * a + b) + c; })
+        |= trx::into(std::vector<std::string>{});
+
+    EXPECT_THAT(result, testing::ElementsAre("12a", "23b"));
+}
+
+TEST(samples, select)
+{
+    struct S
+    {
+        int a;
+        std::string b;
+        char c;
+    };
+    std::vector<S> input = { { 10, "A", 'z' }, { 20, "BB", 'y' }, { 35, "CCC", 'x' } };
+    std::vector<std::tuple<char, char, int>> result = input |= trx::select(&S::c, &S::b, [](const S& s) { return s.a; })
+        |= trx::transform(
+            [](char c, const std::string& b, int a) {
+                return std::tuple{ c, b[0], a };
+            })
+        |= trx::into(std::vector<std::tuple<char, char, int>>{});
+
+    EXPECT_THAT(
+        result,
+        testing::ElementsAre(std::make_tuple('z', 'A', 10), std::make_tuple('y', 'B', 20), std::make_tuple('x', 'C', 35)));
+}

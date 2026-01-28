@@ -1,5 +1,6 @@
 #include <gmock/gmock.h>
 
+#include <sstream>
 #include <trx/trx.hpp>
 
 namespace
@@ -359,4 +360,28 @@ TEST(transducers, unpack)
                 { 5, 6 },
             }),
         testing::ElementsAre(3, 7, 11));
+}
+
+TEST(transducers, select)
+{
+    constexpr auto front = [](const auto& str) { return str.front(); };
+    constexpr auto back = [](const auto& str) { return str.back(); };
+    const auto xform = trx::select(front, back, &std::string::size) |= trx::transform(
+        [](char first, char last, std::size_t size) -> std::string
+        {
+            std::stringstream ss;
+            ss << first << "-" << last << "-" << size;
+            return ss.str();
+        })
+        |= trx::into(std::vector<std::string>{});
+
+    EXPECT_THAT(
+        trx::reduce(
+            xform,
+            std::vector<std::string>{
+                "Alice",
+                "Bob",
+                "Charlie",
+            }),
+        testing::ElementsAre("A-e-5", "B-b-3", "C-e-7"));
 }
