@@ -588,72 +588,6 @@ struct transducer_t<R, void>
     }
 };
 
-struct all_of_fn
-{
-    template <class Pred>
-    struct reducer_t
-    {
-        Pred m_pred;
-
-        template <class... Args>
-        constexpr auto operator()(bool& state, Args&&... args) const -> bool
-        {
-            state = state && std::invoke(m_pred, std::forward<Args>(args)...);
-            return state;
-        }
-    };
-
-    template <class Pred>
-    constexpr auto operator()(Pred&& pred) const -> reductor_t<bool, reducer_t<std::decay_t<Pred>>>
-    {
-        return { true, reducer_t<std::decay_t<Pred>>{ std::forward<Pred>(pred) } };
-    }
-};
-
-struct any_of_fn
-{
-    template <class Pred>
-    struct reducer_t
-    {
-        Pred m_pred;
-
-        template <class... Args>
-        constexpr auto operator()(bool& state, Args&&... args) const -> bool
-        {
-            state = state || std::invoke(m_pred, std::forward<Args>(args)...);
-            return !state;
-        }
-    };
-
-    template <class Pred>
-    constexpr auto operator()(Pred&& pred) const -> reductor_t<bool, reducer_t<std::decay_t<Pred>>>
-    {
-        return { false, reducer_t<std::decay_t<Pred>>{ std::forward<Pred>(pred) } };
-    }
-};
-
-struct none_of_fn
-{
-    template <class Pred>
-    struct reducer_t
-    {
-        Pred m_pred;
-
-        template <class... Args>
-        constexpr auto operator()(bool& state, Args&&... args) const -> bool
-        {
-            state = state && !std::invoke(m_pred, std::forward<Args>(args)...);
-            return state;
-        }
-    };
-
-    template <class Pred>
-    constexpr auto operator()(Pred&& pred) const -> reductor_t<bool, reducer_t<std::decay_t<Pred>>>
-    {
-        return { true, reducer_t<std::decay_t<Pred>>{ std::forward<Pred>(pred) } };
-    }
-};
-
 struct filter_fn
 {
     template <class Reducer, class Pred>
@@ -1147,6 +1081,72 @@ struct intersperse_fn
     constexpr auto operator()(Separator&& separator) const -> transducer_t<reducer_t, std::decay_t<Separator>>
     {
         return { std::forward<Separator>(separator) };
+    }
+};
+
+struct all_of_fn
+{
+    template <class Pred>
+    struct reducer_t
+    {
+        Pred m_pred;
+
+        template <class... Args>
+        constexpr auto operator()(bool& state, Args&&... args) const -> bool
+        {
+            state = state && std::invoke(m_pred, std::forward<Args>(args)...);
+            return state;
+        }
+    };
+
+    template <class Pred>
+    constexpr auto operator()(Pred&& pred) const -> reductor_t<bool, reducer_t<std::decay_t<Pred>>>
+    {
+        return { true, reducer_t<std::decay_t<Pred>>{ std::forward<Pred>(pred) } };
+    }
+};
+
+struct any_of_fn
+{
+    template <class Pred>
+    struct reducer_t
+    {
+        Pred m_pred;
+
+        template <class... Args>
+        constexpr auto operator()(bool& state, Args&&... args) const -> bool
+        {
+            state = state || std::invoke(m_pred, std::forward<Args>(args)...);
+            return !state;
+        }
+    };
+
+    template <class Pred>
+    constexpr auto operator()(Pred&& pred) const -> reductor_t<bool, reducer_t<std::decay_t<Pred>>>
+    {
+        return { false, reducer_t<std::decay_t<Pred>>{ std::forward<Pred>(pred) } };
+    }
+};
+
+struct none_of_fn
+{
+    template <class Pred>
+    struct reducer_t
+    {
+        Pred m_pred;
+
+        template <class... Args>
+        constexpr auto operator()(bool& state, Args&&... args) const -> bool
+        {
+            state = state && !std::invoke(m_pred, std::forward<Args>(args)...);
+            return state;
+        }
+    };
+
+    template <class Pred>
+    constexpr auto operator()(Pred&& pred) const -> reductor_t<bool, reducer_t<std::decay_t<Pred>>>
+    {
+        return { true, reducer_t<std::decay_t<Pred>>{ std::forward<Pred>(pred) } };
     }
 };
 
