@@ -882,11 +882,11 @@ struct project_fn
         Reducer m_next_reducer;
         Funcs m_funcs;
 
-        template <class State, class Arg>
-        constexpr auto operator()(State& state, Arg&& arg) const -> bool
+        template <class State, class... Args>
+        constexpr auto operator()(State& state, Args&&... args) const -> bool
         {
             return std::apply(
-                [&](auto&&... funcs) { return m_next_reducer(state, std::invoke(funcs, std::forward<Arg>(arg))...); },
+                [&](auto&&... funcs) { return m_next_reducer(state, std::invoke(funcs, std::forward<Args>(args)...)...); },
                 m_funcs);
         }
     };
