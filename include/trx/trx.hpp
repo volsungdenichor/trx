@@ -1389,10 +1389,6 @@ constexpr inline auto read_lines = detail::read_lines_fn{};
 
 constexpr inline auto to_reducer = detail::to_reducer_fn{};
 
-static constexpr inline auto all_of = detail::all_of_fn{};
-static constexpr inline auto any_of = detail::any_of_fn{};
-static constexpr inline auto none_of = detail::none_of_fn{};
-
 static constexpr inline auto transform = detail::transform_fn{};
 static constexpr inline auto transform_indexed = detail::transform_indexed_fn{};
 
@@ -1422,6 +1418,10 @@ static constexpr inline auto join = detail::join_fn{}();
 static constexpr inline auto intersperse = detail::intersperse_fn{};
 
 static constexpr inline auto dev_null = reductor_t{ 0, detail::ignoring_reducer_t{} };
+
+static constexpr inline auto all_of = detail::all_of_fn{};
+static constexpr inline auto any_of = detail::any_of_fn{};
+static constexpr inline auto none_of = detail::none_of_fn{};
 
 static constexpr inline auto partition = detail::partition_fn{};
 static constexpr inline auto fork = detail::fork_fn{};
