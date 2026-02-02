@@ -874,7 +874,7 @@ struct unpack_fn
     }
 };
 
-struct select_fn
+struct project_fn
 {
     template <class Reducer, class Funcs>
     struct reducer_t
@@ -1406,7 +1406,7 @@ static constexpr inline auto transform_maybe = detail::transform_maybe_fn{};
 static constexpr inline auto transform_maybe_indexed = detail::transform_maybe_indexed_fn{};
 
 static constexpr inline auto unpack = detail::unpack_fn{}();
-static constexpr inline auto select = detail::select_fn{};
+static constexpr inline auto project = detail::project_fn{};
 
 static constexpr inline auto take_while = detail::take_while_fn{};
 static constexpr inline auto take_while_indexed = detail::take_while_indexed_fn{};

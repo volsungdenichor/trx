@@ -362,11 +362,11 @@ TEST(transducers, unpack)
         testing::ElementsAre(3, 7, 11));
 }
 
-TEST(transducers, select)
+TEST(transducers, project)
 {
     constexpr auto front = [](const auto& str) { return str.front(); };
     constexpr auto back = [](const auto& str) { return str.back(); };
-    const auto xform = trx::select(front, back, &std::string::size) |= trx::transform(
+    const auto xform = trx::project(front, back, &std::string::size) |= trx::transform(
         [](char first, char last, std::size_t size) -> std::string
         {
             std::stringstream ss;

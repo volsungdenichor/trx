@@ -388,7 +388,7 @@ TEST(samples, unpack)
     EXPECT_THAT(result, testing::ElementsAre("12a", "23b"));
 }
 
-TEST(samples, select)
+TEST(samples, project)
 {
     struct S
     {
@@ -397,7 +397,7 @@ TEST(samples, select)
         char c;
     };
     std::vector<S> input = { { 10, "A", 'z' }, { 20, "BB", 'y' }, { 35, "CCC", 'x' } };
-    std::vector<std::tuple<char, char, int>> result = input |= trx::select(&S::c, &S::b, [](const S& s) { return s.a; })
+    std::vector<std::tuple<char, char, int>> result = input |= trx::project(&S::c, &S::b, [](const S& s) { return s.a; })
         |= trx::transform(
             [](char c, const std::string& b, int a) {
                 return std::tuple{ c, b[0], a };

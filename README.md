@@ -251,14 +251,14 @@ std::vector<std::string> result = input
 // result: {"12a", "23b"};
 ```
 
-### select
+### project
 Extracts multiple fields from an object using member pointers or callable extractors, passing them as separate arguments to the next reducer. Each selector can be a pointer to member variable, pointer to member function, or a callable that takes the object and returns a value.
 
 ```cpp
 struct S { int a; std::string b; char c; };
 std::vector<S> input = {{10, "A", 'z'}, {20, "BB", 'y'}, {35, "CCC", 'x'}};
 std::vector<std::tuple<char, char, int>> result = input
-    |= trx::select(&S::c, &S::b, [](const S& s) { return s.a; })
+    |= trx::project(&S::c, &S::b, [](const S& s) { return s.a; })
     |= trx::transform([](char c, const std::string& b, int a) { return std::tuple{ c, b[0], a }; })
     |= trx::into(std::vector<std::tuple<char, char, int>>{});
 // result: {('z', 'A', 10), ('y', 'B', 20), ('x', 'C', 35)}
